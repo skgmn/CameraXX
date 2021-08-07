@@ -5,6 +5,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "CameraX-KTX"
-include ':smile-camera-sample'
+rootProject.name = "CameraXX"
 include ':library'
