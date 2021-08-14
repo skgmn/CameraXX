@@ -16,13 +16,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 @GuardedBy("analyzerFlows")
-private val analyzerFlows = WeakHashMap<ImageAnalysis, Flow<ImageProxy>>()
+private val analyzerFlows = WeakHashMap<ImageAnalysis, WeakReference<Flow<ImageProxy>>>()
 
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
     return suspendCancellableCoroutine { cont ->
@@ -76,15 +77,15 @@ suspend fun ImageCapture.takePicture(
 )
 fun ImageAnalysis.analyze(): Flow<ImageProxy> {
     return synchronized(analyzerFlows) {
-        analyzerFlows[this] ?: callbackFlow {
+        analyzerFlows[this]?.get() ?: callbackFlow {
             setAnalyzer(ImmediateExecutor(), {
                 trySend(it)
             })
             awaitClose {
                 clearAnalyzer()
             }
-        }.shareIn(GlobalScope, SharingStarted.WhileSubscribed(), 1).also {
-            analyzerFlows[this] = it
+        }.shareIn(GlobalScope, SharingStarted.WhileSubscribed(), 0).also {
+            analyzerFlows[this] = WeakReference(it)
         }
     }
 }
