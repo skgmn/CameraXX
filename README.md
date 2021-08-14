@@ -2,7 +2,7 @@
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx:0.1.0"
+    implementation "com.github.skgmn:cameraxx:0.2.0"
 }
 ```
 
