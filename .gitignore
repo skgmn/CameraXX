@@ -8,7 +8,3 @@
 .externalNativeBuild
 .cxx
 local.properties
-
-# sorry but didn't include sample for some security reason
-# please write one on your own
-/sample
