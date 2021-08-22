@@ -34,14 +34,14 @@ object PreviewViewBindingAdapters {
         val prevJob = getTag(R.id.previewViewPrevBindingJob) as? Job
         prevJob?.cancel()
 
-        val prevBoundData = getTag(R.id.previewViewPrevBoundData) as? BoundData
+        val oldBindings = getTag(R.id.previewViewCameraBindings) as? CameraBindings
 
         val newJob = GlobalScope.launch(Dispatchers.Main.immediate, start = CoroutineStart.LAZY) {
-            val oldLifecycleOwner = prevBoundData?.lifecycleOwner?.get()
-            val oldCameraSelector = prevBoundData?.cameraSelector
-            val oldPreview = prevBoundData?.previewUseCase
-            val oldImageCapture = prevBoundData?.imageCaptureUseCase
-            val oldImageAnalysis = prevBoundData?.imageAnalysisUseCase
+            val oldLifecycleOwner = oldBindings?.lifecycleOwner?.get()
+            val oldCameraSelector = oldBindings?.cameraSelector
+            val oldPreview = oldBindings?.previewUseCase
+            val oldImageCapture = oldBindings?.imageCaptureUseCase
+            val oldImageAnalysis = oldBindings?.imageAnalysisUseCase
 
             if (oldPreview !== newPreview) {
                 oldPreview?.setSurfaceProvider(null)
@@ -82,20 +82,20 @@ object PreviewViewBindingAdapters {
                 )
             }
 
-            val newBoundData = BoundData(
+            val newBindings = CameraBindings(
                 newLifecycleOwner,
                 newCameraSelector,
                 newPreview,
                 newImageCapture,
                 newImageAnalysis
             )
-            setTag(R.id.previewViewPrevBoundData, newBoundData)
+            setTag(R.id.previewViewCameraBindings, newBindings)
         }
         setTag(R.id.previewViewPrevBindingJob, newJob)
         newJob.start()
     }
 
-    private class BoundData(
+    private class CameraBindings(
         lifecycleOwner: LifecycleOwner?,
         val cameraSelector: CameraSelector?,
         val previewUseCase: Preview?,
