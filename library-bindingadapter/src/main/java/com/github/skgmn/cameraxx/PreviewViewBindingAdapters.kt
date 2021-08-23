@@ -46,8 +46,8 @@ object PreviewViewBindingAdapters {
 
             if (oldPreview !== newPreview) {
                 oldPreview?.setSurfaceProvider(null)
+                newPreview?.setSurfaceProvider(surfaceProvider)
             }
-            newPreview?.setSurfaceProvider(surfaceProvider)
 
             val cameraProvider = context.getProcessCameraProvider()
 
