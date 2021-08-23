@@ -39,7 +39,7 @@ android {
 
 dependencies {
     debugApi project(":library")
-    releaseApi "com.github.skgmn:cameraxx:0.2.0"
+    releaseApi "com.github.skgmn:cameraxx:$libraryVersion"
 
     implementation "androidx.compose.ui:ui:$composeVersion"
 }
@@ -61,7 +61,7 @@ afterEvaluate {
 
                 groupId = 'com.github.skgmn'
                 artifactId = 'cameraxx-composable'
-                version = "0.2.0"
+                version = libraryVersion
             }
         }
     }

@@ -2,9 +2,9 @@
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx:0.2.0"
-    implementation "com.github.skgmn:cameraxx-bindingadapter:0.2.0" // for Databinding
-    implementation "com.github.skgmn:cameraxx-composable:0.2.0"     // for Jetpack Compose
+    implementation "com.github.skgmn:cameraxx:0.3.0"
+    implementation "com.github.skgmn:cameraxx-bindingadapter:0.3.0" // for Databinding
+    implementation "com.github.skgmn:cameraxx-composable:0.3.0"     // for Jetpack Compose
 }
 ```
 

@@ -56,7 +56,7 @@ afterEvaluate {
 
                 groupId = 'com.github.skgmn'
                 artifactId = 'cameraxx'
-                version = "0.2.0"
+                version = libraryVersion
             }
         }
     }
