@@ -3,8 +3,7 @@ package com.github.skgmn.cameraxx.samplecompose
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,10 +27,12 @@ fun MainScreen(
     val viewModel: MainViewModel = viewModel()
 
     val permissionStatus by permissionStatusFlow.collectAsState(null)
-    val imageCapture by viewModel.imageCaptureUseCase.collectAsState(null)
-    val permissionInitiallyRequested by viewModel.permissionsInitiallyRequested.collectAsState(
+    val preview by remember { mutableStateOf(viewModel.preview) }
+    val imageCapture by viewModel.imageCaptureState.collectAsState(null)
+    val permissionInitiallyRequested by viewModel.permissionsInitiallyRequestedState.collectAsState(
         false
     )
+    val savingPhoto by viewModel.savingPhotoState.collectAsState(false)
 
     Box(
         Modifier
@@ -41,6 +42,8 @@ fun MainScreen(
         if (permissionStatus?.granted == true) {
             CameraPreview(
                 modifier = Modifier.fillMaxSize(),
+                // Pass null to Preview so it can keep last preview frame while saving a photo
+                preview = if (savingPhoto) null else preview,
                 imageCapture = imageCapture
             )
             Button(
@@ -55,6 +58,28 @@ fun MainScreen(
         if (permissionInitiallyRequested && permissionStatus?.denied == true) {
             PermissionLayer(onRequestCameraPermission)
         }
+        if (savingPhoto) {
+            SavingProgress()
+        }
+    }
+}
+
+@Composable
+private fun SavingProgress() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+        .background(Color(0xA0000000)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(id = R.string.saving_photo),
+                color = Color(0xffffffff)
+            )
+        }
     }
 }
 
@@ -64,9 +89,7 @@ private fun PermissionLayer(onRequestCameraPermission: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xff000000))
+        modifier = Modifier.fillMaxSize()
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(

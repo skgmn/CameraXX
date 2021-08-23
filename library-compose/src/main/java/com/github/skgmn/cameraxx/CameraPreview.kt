@@ -5,8 +5,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.view.PreviewView
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -19,7 +18,18 @@ import java.lang.ref.WeakReference
 fun CameraPreview(
     modifier: Modifier = Modifier,
     cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
-    preview: Preview = Preview.Builder().build(),
+    imageCapture: ImageCapture? = null,
+    imageAnalysis: ImageAnalysis? = null
+) {
+    val defaultPreview by remember { mutableStateOf(Preview.Builder().build()) }
+    CameraPreview(modifier, cameraSelector, defaultPreview, imageCapture, imageAnalysis)
+}
+
+@Composable
+fun CameraPreview(
+    modifier: Modifier = Modifier,
+    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
+    preview: Preview?,
     imageCapture: ImageCapture? = null,
     imageAnalysis: ImageAnalysis? = null
 ) {
@@ -34,7 +44,7 @@ fun CameraPreview(
         update = { view ->
             composableScope.launch {
                 val oldBindings =
-                    view.getTag(R .id.previewViewCameraBindings) as? ComposeCameraBinding
+                    view.getTag(R.id.previewViewCameraBindings) as? ComposeCameraBinding
                 val oldLifecycleOwner = oldBindings?.lifecycleOwner?.get()
                 val oldCameraSelector = oldBindings?.cameraSelector
                 val oldPreview = oldBindings?.previewUseCase
@@ -43,8 +53,8 @@ fun CameraPreview(
 
                 if (oldPreview !== preview) {
                     oldPreview?.setSurfaceProvider(null)
+                    preview?.setSurfaceProvider(view.surfaceProvider)
                 }
-                preview.setSurfaceProvider(view.surfaceProvider)
 
                 val cameraProvider = view.context.getProcessCameraProvider()
                 if (oldLifecycleOwner !== lifecycleOwner || oldCameraSelector != cameraSelector) {
@@ -96,7 +106,7 @@ fun CameraPreview(
 private class ComposeCameraBinding(
     lifecycleOwner: LifecycleOwner,
     val cameraSelector: CameraSelector,
-    val previewUseCase: Preview,
+    val previewUseCase: Preview?,
     val imageCaptureUseCase: ImageCapture?,
     val imageAnalysisUseCase: ImageAnalysis?
 ) {

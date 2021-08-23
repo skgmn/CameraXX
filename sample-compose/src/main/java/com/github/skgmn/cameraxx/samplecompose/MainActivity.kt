@@ -3,7 +3,6 @@ package com.github.skgmn.cameraxx.samplecompose
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
@@ -40,7 +39,7 @@ class MainActivity : FragmentActivity() {
 
         lifecycleScope.launch {
             requestPermissions(Manifest.permission.CAMERA)
-            viewModel.permissionsInitiallyRequested.value = true
+            viewModel.permissionsInitiallyRequestedState.value = true
         }
     }
 
@@ -49,24 +48,31 @@ class MainActivity : FragmentActivity() {
             PermissionRequest(listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), true)
         val permissionResult = requestPermissions(permissionRequest)
         if (permissionResult.granted) {
-            // ImageCapture seems not work well right after a permission is granted.
-            // In this case recreate and rebind ImageCapture to workaround this issue.
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                permissionResult == GrantResult.JUST_GRANTED
-            ) {
-                viewModel.replaceImageCapture()
-            }
-            whenStarted {
-                val uri = viewModel.takePhotoAsync().await()
-                if (uri != null) {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                        startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                        Toast.makeText(this@MainActivity, R.string.photo_saved, Toast.LENGTH_SHORT)
-                            .show()
+            viewModel.savingPhotoState.value = true
+            try {
+                // ImageCapture seems not work well right after a permission is granted.
+                // In this case recreate and rebind ImageCapture to workaround this issue.
+                if (permissionResult == GrantResult.JUST_GRANTED) {
+                    viewModel.replaceImageCapture()
+                }
+                whenStarted {
+                    viewModel.takePhotoAsync().await()?.let { uri ->
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, uri)
+                            startActivityForResult(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            Toast
+                                .makeText(
+                                    this@MainActivity,
+                                    R.string.photo_saved,
+                                    Toast.LENGTH_SHORT
+                                )
+                                .show()
+                        }
                     }
                 }
+            } finally {
+                viewModel.savingPhotoState.value = false
             }
         } else {
             Toast.makeText(this@MainActivity, R.string.no_permissions, Toast.LENGTH_SHORT)

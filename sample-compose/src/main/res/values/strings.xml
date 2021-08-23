@@ -4,6 +4,7 @@
     <string name="grant_permissions">Grant permissions</string>
     <string name="take_photo">Take a photo</string>
     <string name="no_permissions">Not enough permissions</string>
+    <string name="saving_photo">Saving photo…</string>
     <string name="photo_saved">Photo saved</string>
     <string name="photo_save_error">Error</string>
 </resources>
