@@ -60,7 +60,7 @@ afterEvaluate {
                 from components.release
 
                 groupId = 'com.github.skgmn'
-                artifactId = 'cameraxx-compose'
+                artifactId = 'cameraxx-composable'
                 version = "0.2.0"
             }
         }
