@@ -1,0 +1,4 @@
+{
+  "android.permission.CAMERA": "Of course camera is needed for camera app.",
+  "android.permission.WRITE_EXTERNAL_STORAGE": "To save photo"
+}

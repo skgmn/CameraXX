@@ -14,4 +14,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = "CameraXX"
 include ':library'
-include ':sample'
+include ':sample-databinding'
+include ':sample-compose'
+include ':library-bindingadapter'
+include ':library-composable'
