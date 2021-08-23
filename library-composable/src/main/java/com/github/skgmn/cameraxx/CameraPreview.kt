@@ -19,10 +19,20 @@ fun CameraPreview(
     modifier: Modifier = Modifier,
     cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
     imageCapture: ImageCapture? = null,
-    imageAnalysis: ImageAnalysis? = null
+    imageAnalysis: ImageAnalysis? = null,
+    scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
+    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE
 ) {
     val defaultPreview by remember { mutableStateOf(Preview.Builder().build()) }
-    CameraPreview(modifier, cameraSelector, defaultPreview, imageCapture, imageAnalysis)
+    CameraPreview(
+        modifier,
+        cameraSelector,
+        defaultPreview,
+        imageCapture,
+        imageAnalysis,
+        scaleType,
+        implementationMode
+    )
 }
 
 @Composable
@@ -31,7 +41,9 @@ fun CameraPreview(
     cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
     preview: Preview?,
     imageCapture: ImageCapture? = null,
-    imageAnalysis: ImageAnalysis? = null
+    imageAnalysis: ImageAnalysis? = null,
+    scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
+    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE
 ) {
     val composableScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -42,9 +54,15 @@ fun CameraPreview(
             PreviewView(context)
         },
         update = { view ->
+            val oldBindings = view.getTag(R.id.previewViewCameraBindings) as? ComposeCameraBinding
+            if (oldBindings?.scaleType != scaleType) {
+                view.scaleType = scaleType
+            }
+            if (oldBindings?.implementationMode != implementationMode) {
+                view.implementationMode = implementationMode
+            }
+
             composableScope.launch {
-                val oldBindings =
-                    view.getTag(R.id.previewViewCameraBindings) as? ComposeCameraBinding
                 val oldLifecycleOwner = oldBindings?.lifecycleOwner?.get()
                 val oldCameraSelector = oldBindings?.cameraSelector
                 val oldPreview = oldBindings?.previewUseCase
@@ -95,7 +113,9 @@ fun CameraPreview(
                     cameraSelector,
                     preview,
                     imageCapture,
-                    imageAnalysis
+                    imageAnalysis,
+                    scaleType,
+                    implementationMode
                 )
                 view.setTag(R.id.previewViewCameraBindings, newBindings)
             }
@@ -108,7 +128,9 @@ private class ComposeCameraBinding(
     val cameraSelector: CameraSelector,
     val previewUseCase: Preview?,
     val imageCaptureUseCase: ImageCapture?,
-    val imageAnalysisUseCase: ImageAnalysis?
+    val imageAnalysisUseCase: ImageAnalysis?,
+    val scaleType: PreviewView.ScaleType,
+    val implementationMode: PreviewView.ImplementationMode
 ) {
     val lifecycleOwner: WeakReference<LifecycleOwner> = WeakReference(lifecycleOwner)
 }
