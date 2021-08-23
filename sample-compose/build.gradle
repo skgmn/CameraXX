@@ -37,8 +37,8 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion compose_version
-        kotlinCompilerVersion '1.5.21'
+        kotlinCompilerExtensionVersion composeVersion
+        kotlinCompilerVersion kotlinVersion
     }
     packagingOptions {
         resources {
@@ -48,14 +48,14 @@ android {
 }
 
 dependencies {
-    implementation project(":library")
+    implementation project(":library-compose")
 
     implementation 'androidx.activity:activity-compose:1.3.1'
     implementation "androidx.activity:activity-ktx:1.3.1"
     implementation "androidx.appcompat:appcompat:1.3.1"
-    implementation "androidx.compose.ui:ui:$compose_version"
-    implementation "androidx.compose.material:material:$compose_version"
-    implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
+    implementation "androidx.compose.ui:ui:$composeVersion"
+    implementation "androidx.compose.material:material:$composeVersion"
+    implementation "androidx.compose.ui:ui-tooling-preview:$composeVersion"
     implementation "androidx.lifecycle:lifecycle-viewmodel-compose:1.0.0-alpha07"
     implementation "com.github.skgmn:startactivityx:1.0.0"
     implementation 'com.google.android.material:material:1.4.0'

@@ -7,6 +7,7 @@ import androidx.camera.core.Preview
 import androidx.camera.view.PreviewView
 import androidx.databinding.BindingAdapter
 import androidx.lifecycle.LifecycleOwner
+import com.github.skgmn.cameraxx.bindingadapter.R
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 

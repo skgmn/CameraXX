@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
+import com.github.skgmn.cameraxx.compose.R
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
@@ -33,7 +34,7 @@ fun CameraPreview(
         update = { view ->
             composableScope.launch {
                 val oldBindings =
-                    view.getTag(R.id.previewViewCameraBindings) as? ComposeCameraBinding
+                    view.getTag(R .id.previewViewCameraBindings) as? ComposeCameraBinding
                 val oldLifecycleOwner = oldBindings?.lifecycleOwner?.get()
                 val oldCameraSelector = oldBindings?.cameraSelector
                 val oldPreview = oldBindings?.previewUseCase
