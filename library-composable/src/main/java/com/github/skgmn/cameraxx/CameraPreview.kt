@@ -1,18 +1,14 @@
 package com.github.skgmn.cameraxx
 
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.view.PreviewView
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
-import com.github.skgmn.cameraxx.compose.R
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.lang.ref.WeakReference
 
 @Composable
 fun CameraPreview(
@@ -48,58 +44,53 @@ fun CameraPreview(
     val composableScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    var updateJob by remember { mutableStateOf<Job?>(null) }
+    var currentLifecycleOwner by remember { mutableStateOf<LifecycleOwner?>(null) }
+    var currentCameraSelector by remember { mutableStateOf<CameraSelector?>(null) }
+    var currentPreview by remember { mutableStateOf<Preview?>(null) }
+    var currentImageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    var currentImageAnalysis by remember { mutableStateOf<ImageAnalysis?>(null) }
+    var currentScaleType by remember { mutableStateOf<PreviewView.ScaleType?>(null) }
+    var currentImplMode by remember { mutableStateOf<PreviewView.ImplementationMode?>(null) }
+
     AndroidView(
         modifier = modifier,
         factory = { context ->
             PreviewView(context)
         },
         update = { view ->
-            val oldBindings = view.getTag(R.id.previewViewCameraBindings) as? ComposeCameraBinding
-            if (oldBindings?.scaleType != scaleType) {
+            if (currentScaleType != scaleType) {
                 view.scaleType = scaleType
+                currentScaleType = scaleType
             }
-            if (oldBindings?.implementationMode != implementationMode) {
+            if (currentImplMode != implementationMode) {
                 view.implementationMode = implementationMode
+                currentImplMode = implementationMode
             }
 
-            composableScope.launch {
-                val oldLifecycleOwner = oldBindings?.lifecycleOwner?.get()
-                val oldCameraSelector = oldBindings?.cameraSelector
-                val oldPreview = oldBindings?.previewUseCase
-                val oldImageCapture = oldBindings?.imageCaptureUseCase
-                val oldImageAnalysis = oldBindings?.imageAnalysisUseCase
-
-                if (oldPreview !== preview) {
-                    oldPreview?.setSurfaceProvider(null)
-                    preview?.setSurfaceProvider(view.surfaceProvider)
-                }
-
+            updateJob?.cancel()
+            updateJob = composableScope.launch {
                 val cameraProvider = view.context.getProcessCameraProvider()
-                if (oldLifecycleOwner !== lifecycleOwner || oldCameraSelector != cameraSelector) {
-                    cameraProvider.unbind(oldPreview, oldImageCapture, oldImageAnalysis)
-                    val newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
-                    if (newUseCases.isNotEmpty()) {
-                        LocalLifecycleOwner
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            *newUseCases.toTypedArray()
-                        )
-                    }
+                val oldUseCases: List<UseCase>
+                val newUseCases: List<UseCase>
+                if (currentLifecycleOwner !== lifecycleOwner || currentCameraSelector != cameraSelector) {
+                    oldUseCases = listOfNotNull(currentPreview, currentImageCapture, currentImageAnalysis)
+                    newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
+                } else {
+                    oldUseCases = listOfNotNull(
+                        currentPreview?.takeIf { it !== preview },
+                        currentImageCapture?.takeIf { it !== imageCapture },
+                        currentImageAnalysis?.takeIf { it !== imageAnalysis }
+                    )
+                    newUseCases = listOfNotNull(
+                        preview.takeIf { it !== currentPreview },
+                        imageCapture?.takeIf { it !== currentImageCapture },
+                        imageAnalysis?.takeIf { it !== currentImageAnalysis }
+                    )
                 }
-
-                val oldUseCases = listOfNotNull(
-                    oldPreview?.takeIf { it !== preview },
-                    oldImageCapture?.takeIf { it !== imageCapture },
-                    oldImageAnalysis?.takeIf { it !== imageAnalysis }
-                )
-                cameraProvider.unbind(*oldUseCases.toTypedArray())
-
-                val newUseCases = listOfNotNull(
-                    preview.takeIf { it !== oldPreview },
-                    imageCapture?.takeIf { it !== oldImageCapture },
-                    imageAnalysis?.takeIf { it !== oldImageAnalysis }
-                )
+                if (oldUseCases.isNotEmpty()) {
+                    cameraProvider.unbind(*oldUseCases.toTypedArray())
+                }
                 if (newUseCases.isNotEmpty()) {
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
@@ -108,29 +99,17 @@ fun CameraPreview(
                     )
                 }
 
-                val newBindings = ComposeCameraBinding(
-                    lifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageCapture,
-                    imageAnalysis,
-                    scaleType,
-                    implementationMode
-                )
-                view.setTag(R.id.previewViewCameraBindings, newBindings)
+                if (currentPreview !== preview) {
+                    currentPreview?.setSurfaceProvider(null)
+                    preview?.setSurfaceProvider(view.surfaceProvider)
+                }
+
+                currentLifecycleOwner = lifecycleOwner
+                currentCameraSelector = cameraSelector
+                currentPreview = preview
+                currentImageCapture = imageCapture
+                currentImageAnalysis = imageAnalysis
             }
         }
     )
-}
-
-private class ComposeCameraBinding(
-    lifecycleOwner: LifecycleOwner,
-    val cameraSelector: CameraSelector,
-    val previewUseCase: Preview?,
-    val imageCaptureUseCase: ImageCapture?,
-    val imageAnalysisUseCase: ImageAnalysis?,
-    val scaleType: PreviewView.ScaleType,
-    val implementationMode: PreviewView.ImplementationMode
-) {
-    val lifecycleOwner: WeakReference<LifecycleOwner> = WeakReference(lifecycleOwner)
 }
