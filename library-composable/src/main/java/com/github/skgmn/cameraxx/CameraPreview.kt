@@ -28,7 +28,7 @@ fun CameraPreview(
 ) {
     val scope = rememberCoroutineScope()
     val cameraState = remember { mutableStateOf<StableCamera?>(null) }
-    val camera by cameraState
+    var camera by cameraState
     val zoomStateFlow by remember(camera, pinchZoomEnabled) {
         derivedStateOf {
             if (pinchZoomEnabled) {
@@ -73,9 +73,8 @@ fun CameraPreview(
         imageCapture,
         imageAnalysis,
         scaleType,
-        implementationMode,
-        cameraState
-    )
+        implementationMode
+    ) { camera = it }
 }
 
 @Composable
@@ -87,18 +86,11 @@ private fun AndroidPreviewView(
     imageAnalysis: ImageAnalysis? = null,
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
-    cameraOutput: MutableState<StableCamera?>
+    onCameraReceived: (StableCamera) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var updateJob by remember { mutableStateOf<Job?>(null) }
-    var currentLifecycleOwner by remember { mutableStateOf<LifecycleOwner?>(null) }
-    var currentCameraSelector by remember { mutableStateOf<CameraSelector?>(null) }
-    var currentPreview by remember { mutableStateOf<Preview?>(null) }
-    var currentImageCapture by remember { mutableStateOf<ImageCapture?>(null) }
-    var currentImageAnalysis by remember { mutableStateOf<ImageAnalysis?>(null) }
-    var currentScaleType by remember { mutableStateOf<PreviewView.ScaleType?>(null) }
-    var currentImplMode by remember { mutableStateOf<PreviewView.ImplementationMode?>(null) }
+    val lifecycleOwner by rememberUpdatedState(LocalLifecycleOwner.current)
+    val bindings = remember { PreviewViewBindings() }
 
     AndroidView(
         modifier = modifier,
@@ -106,62 +98,73 @@ private fun AndroidPreviewView(
             PreviewView(context)
         },
         update = { view ->
-            if (currentScaleType != scaleType) {
+            if (view.scaleType != scaleType) {
                 view.scaleType = scaleType
-                currentScaleType = scaleType
             }
-            if (currentImplMode != implementationMode) {
+            if (view.implementationMode != implementationMode) {
                 view.implementationMode = implementationMode
-                currentImplMode = implementationMode
             }
 
-            updateJob?.cancel()
-            updateJob = scope.launch {
+            bindings.bindingJob?.cancel()
+            bindings.bindingJob = scope.launch {
                 val cameraProvider = view.context.getProcessCameraProvider()
                 val oldUseCases: List<UseCase>
                 val newUseCases: List<UseCase>
-                if (currentLifecycleOwner !== lifecycleOwner || currentCameraSelector != cameraSelector) {
-                    oldUseCases =
-                        listOfNotNull(currentPreview, currentImageCapture, currentImageAnalysis)
+                if (bindings.lifecycleOwner !== lifecycleOwner || bindings.cameraSelector != cameraSelector) {
+                    oldUseCases = listOfNotNull(
+                        bindings.preview,
+                        bindings.imageCapture,
+                        bindings.imageAnalysis
+                    )
                     newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
                 } else {
                     oldUseCases = listOfNotNull(
-                        currentPreview?.takeIf { it !== preview },
-                        currentImageCapture?.takeIf { it !== imageCapture },
-                        currentImageAnalysis?.takeIf { it !== imageAnalysis }
+                        bindings.preview?.takeIf { it !== preview },
+                        bindings.imageCapture?.takeIf { it !== imageCapture },
+                        bindings.imageAnalysis?.takeIf { it !== imageAnalysis }
                     )
                     newUseCases = listOfNotNull(
-                        preview.takeIf { it !== currentPreview },
-                        imageCapture?.takeIf { it !== currentImageCapture },
-                        imageAnalysis?.takeIf { it !== currentImageAnalysis }
+                        preview.takeIf { it !== bindings.preview },
+                        imageCapture?.takeIf { it !== bindings.imageCapture },
+                        imageAnalysis?.takeIf { it !== bindings.imageAnalysis }
                     )
                 }
                 if (oldUseCases.isNotEmpty()) {
                     cameraProvider.unbind(*oldUseCases.toTypedArray())
                 }
                 if (newUseCases.isNotEmpty()) {
-                    cameraOutput.value = StableCamera(
+                    val camera = StableCamera(
                         cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             cameraSelector,
                             *newUseCases.toTypedArray()
                         )
                     )
+                    onCameraReceived(camera)
                 }
 
-                if (currentPreview !== preview) {
-                    currentPreview?.setSurfaceProvider(null)
+                if (bindings.preview !== preview) {
+                    bindings.preview?.setSurfaceProvider(null)
                     preview?.setSurfaceProvider(view.surfaceProvider)
                 }
 
-                currentLifecycleOwner = lifecycleOwner
-                currentCameraSelector = cameraSelector
-                currentPreview = preview
-                currentImageCapture = imageCapture
-                currentImageAnalysis = imageAnalysis
+                bindings.lifecycleOwner = lifecycleOwner
+                bindings.cameraSelector = cameraSelector
+                bindings.preview = preview
+                bindings.imageCapture = imageCapture
+                bindings.imageAnalysis = imageAnalysis
             }
         }
     )
+}
+
+private class PreviewViewBindings {
+    var bindingJob: Job? = null
+    var lifecycleOwner: LifecycleOwner? = null
+    var cameraSelector: CameraSelector? = null
+    var preview: Preview? = null
+    var imageCapture: ImageCapture? = null
+    var imageAnalysis: ImageAnalysis? = null
 }
 
 @Stable
