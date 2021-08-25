@@ -13,19 +13,19 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.skgmn.cameraxx.CameraPreview
 import com.github.skgmn.startactivityx.PermissionStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 fun MainScreen(
+    viewModel: MainViewModel,
     permissionStatusFlow: Flow<PermissionStatus>,
     onRequestCameraPermission: () -> Unit,
     onTakePhoto: () -> Unit
 ) {
-    val viewModel: MainViewModel = viewModel()
-
     val permissionStatus by permissionStatusFlow.collectAsState(null)
     val preview by remember { mutableStateOf(viewModel.preview) }
     val imageCapture by viewModel.imageCaptureState.collectAsState(null)
@@ -44,7 +44,8 @@ fun MainScreen(
                 modifier = Modifier.fillMaxSize(),
                 // Pass null to Preview so it can keep last preview frame while saving a photo
                 preview = if (savingPhoto) null else preview,
-                imageCapture = imageCapture
+                imageCapture = imageCapture,
+                pinchZoomEnabled = true
             )
             Button(
                 modifier = Modifier
@@ -69,7 +70,7 @@ private fun SavingProgress() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-        .background(Color(0xA0000000)),
+            .background(Color(0xA0000000)),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

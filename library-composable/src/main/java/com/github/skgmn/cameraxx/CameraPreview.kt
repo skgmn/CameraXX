@@ -2,48 +2,95 @@ package com.github.skgmn.cameraxx
 
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
     cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
+    preview: Preview? = remember { Preview.Builder().build() },
     imageCapture: ImageCapture? = null,
     imageAnalysis: ImageAnalysis? = null,
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
-    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE
+    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
+    pinchZoomEnabled: Boolean = false,
+    cameraReceiver: (suspend (Camera) -> Unit)? = null
 ) {
-    val defaultPreview by remember { mutableStateOf(Preview.Builder().build()) }
-    CameraPreview(
-        modifier,
+    val scope = rememberCoroutineScope()
+    val cameraState = remember { mutableStateOf<StableCamera?>(null) }
+    val camera by cameraState
+    val zoomStateFlow by remember(camera, pinchZoomEnabled) {
+        derivedStateOf {
+            if (pinchZoomEnabled) {
+                camera?.cameraInfo?.getZoomState()
+            } else {
+                null
+            }
+        }
+    }
+    val zoomState by (zoomStateFlow ?: flowOf(null)).collectAsState(null)
+    val zoomRatio by remember(zoomState) { derivedStateOf { zoomState?.zoomRatio } }
+
+    LaunchedEffect(camera, cameraReceiver) {
+        camera?.let { cameraReceiver?.invoke(it) }
+    }
+
+    var m = modifier
+    if (pinchZoomEnabled) {
+        m = m.pointerInput(Unit) {
+            var zoomJob: Job? = null
+            detectTransformGestures { _, _, zoom, _ ->
+                val cam = camera ?: return@detectTransformGestures
+                val currentRatio = zoomRatio ?: return@detectTransformGestures
+                val minRatio = zoomState?.minZoomRatio ?: return@detectTransformGestures
+                val maxRatio = zoomState?.maxZoomRatio ?: return@detectTransformGestures
+
+                val newRatio = (currentRatio * zoom).coerceIn(minRatio, maxRatio)
+                if (currentRatio != newRatio) {
+                    zoomJob?.cancel()
+                    zoomJob = scope.launch {
+                        cam.cameraControl.setZoomRatio(newRatio)
+                    }
+                }
+            }
+        }
+    }
+
+    AndroidPreviewView(
+        m,
         cameraSelector,
-        defaultPreview,
+        preview,
         imageCapture,
         imageAnalysis,
         scaleType,
-        implementationMode
+        implementationMode,
+        cameraState
     )
 }
 
 @Composable
-fun CameraPreview(
-    modifier: Modifier = Modifier,
+private fun AndroidPreviewView(
+    modifier: Modifier,
     cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
     preview: Preview?,
     imageCapture: ImageCapture? = null,
     imageAnalysis: ImageAnalysis? = null,
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
-    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE
+    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
+    cameraOutput: MutableState<StableCamera?>
 ) {
-    val composableScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
-
     var updateJob by remember { mutableStateOf<Job?>(null) }
     var currentLifecycleOwner by remember { mutableStateOf<LifecycleOwner?>(null) }
     var currentCameraSelector by remember { mutableStateOf<CameraSelector?>(null) }
@@ -69,12 +116,13 @@ fun CameraPreview(
             }
 
             updateJob?.cancel()
-            updateJob = composableScope.launch {
+            updateJob = scope.launch {
                 val cameraProvider = view.context.getProcessCameraProvider()
                 val oldUseCases: List<UseCase>
                 val newUseCases: List<UseCase>
                 if (currentLifecycleOwner !== lifecycleOwner || currentCameraSelector != cameraSelector) {
-                    oldUseCases = listOfNotNull(currentPreview, currentImageCapture, currentImageAnalysis)
+                    oldUseCases =
+                        listOfNotNull(currentPreview, currentImageCapture, currentImageAnalysis)
                     newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
                 } else {
                     oldUseCases = listOfNotNull(
@@ -92,10 +140,12 @@ fun CameraPreview(
                     cameraProvider.unbind(*oldUseCases.toTypedArray())
                 }
                 if (newUseCases.isNotEmpty()) {
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        *newUseCases.toTypedArray()
+                    cameraOutput.value = StableCamera(
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            cameraSelector,
+                            *newUseCases.toTypedArray()
+                        )
                     )
                 }
 
@@ -113,3 +163,6 @@ fun CameraPreview(
         }
     )
 }
+
+@Stable
+internal class StableCamera(camera: androidx.camera.core.Camera) : Camera(camera)

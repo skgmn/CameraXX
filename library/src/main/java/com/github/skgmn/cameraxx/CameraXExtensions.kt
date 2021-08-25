@@ -2,11 +2,13 @@ package com.github.skgmn.cameraxx
 
 import android.content.Context
 import androidx.annotation.GuardedBy
+import androidx.annotation.MainThread
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -15,7 +17,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.suspendCancellableCoroutine
 import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.coroutines.resume
@@ -26,16 +27,7 @@ import kotlin.coroutines.suspendCoroutine
 private val analyzerFlows = WeakHashMap<ImageAnalysis, WeakReference<Flow<ImageProxy>>>()
 
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
-    return suspendCancellableCoroutine { cont ->
-        val listenableFuture = ProcessCameraProvider.getInstance(this)
-        val listener = {
-            cont.resume(listenableFuture.get())
-        }
-        listenableFuture.addListener(listener, ImmediateExecutor())
-        cont.invokeOnCancellation {
-            listenableFuture.cancel(false)
-        }
-    }
+    return ProcessCameraProvider.getInstance(this).await()
 }
 
 suspend fun ImageCapture.takePicture(): ImageProxy {
