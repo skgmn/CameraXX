@@ -27,7 +27,7 @@ import kotlin.coroutines.suspendCoroutine
 private val analyzerFlows = WeakHashMap<ImageAnalysis, WeakReference<Flow<ImageProxy>>>()
 
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
-    return ProcessCameraProvider.getInstance(this).await()
+    return ProcessCameraProvider.getInstance(this).await(false)
 }
 
 suspend fun ImageCapture.takePicture(): ImageProxy {

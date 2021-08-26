@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.skgmn.cameraxx.CameraPreview
+import com.github.skgmn.cameraxx.rememberTorchState
 import com.github.skgmn.cameraxx.rememberZoomState
 import com.github.skgmn.startactivityx.PermissionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,9 +35,14 @@ fun MainScreen(
         false
     )
     val savingPhoto by viewModel.savingPhotoState.collectAsState()
+
     val zoomState = rememberZoomState()
     val pinchZoomInProgress by zoomState.pinchZoomInProgress.collectAsState()
     val zoomRatio by zoomState.ratio.collectAsState()
+
+    val torchState = rememberTorchState()
+    val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
+    val torchOn by torchState.isOn.collectAsState()
 
     Box(
         Modifier
@@ -50,17 +56,16 @@ fun MainScreen(
                 preview = if (savingPhoto) null else preview,
                 imageCapture = imageCapture,
                 pinchZoomEnabled = true,
-                zoomState = zoomState
+                zoomState = zoomState,
+                torchState = torchState
             )
-            if (pinchZoomInProgress) {
-                zoomRatio?.let { ratio ->
-                    Text(
-                        text = "%.1fx".format(ratio),
-                        color = Color(0xffffffff),
-                        fontSize = 36.sp,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
+            if (pinchZoomInProgress && zoomRatio != null) {
+                Text(
+                    text = "%.1fx".format(zoomRatio),
+                    color = Color(0xffffffff),
+                    fontSize = 36.sp,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
             Button(
                 modifier = Modifier
@@ -69,6 +74,18 @@ fun MainScreen(
                 onClick = { onTakePhoto() }
             ) {
                 Text(text = stringResource(R.string.take_photo))
+            }
+            if (hasFlashUnit == true) {
+                torchOn?.let { isOn ->
+                    Button(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset((-8).dp, 8.dp),
+                        onClick = { torchState.isOn.value = !isOn }
+                    ) {
+                        Text(if (isOn) "Off" else "On")
+                    }
+                }
             }
         }
         if (permissionInitiallyRequested && permissionStatus?.denied == true) {

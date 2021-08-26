@@ -1,5 +1,6 @@
 package com.github.skgmn.cameraxx
 
+import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -13,6 +14,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -26,11 +28,13 @@ fun CameraPreview(
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
     pinchZoomEnabled: Boolean = false,
-    zoomState: ZoomState? = null
+    zoomState: ZoomState? = null,
+    torchState: TorchState? = null
 ) {
     val cameraState = remember { mutableStateOf<StableCamera?>(null) }
     var camera by cameraState
-    val currentZoomStateFlow by remember(camera, pinchZoomEnabled, zoomState) {
+
+    val cameraZoomStateFlow by remember(camera, pinchZoomEnabled, zoomState) {
         derivedStateOf {
             if (pinchZoomEnabled || zoomState != null) {
                 camera?.cameraInfo?.getZoomState()
@@ -39,10 +43,22 @@ fun CameraPreview(
             }
         }
     }
-    val cameraZoomState by (currentZoomStateFlow ?: flowOf(null)).collectAsState(null)
+    val cameraZoomState by (cameraZoomStateFlow ?: flowOf(null)).collectAsState(null)
     val cameraZoomRatio by remember(cameraZoomState) {
         derivedStateOf { cameraZoomState?.zoomRatio }
     }
+
+    val cameraTorchStateFlow by remember(camera, torchState) {
+        derivedStateOf {
+            if (torchState != null) {
+                camera?.cameraInfo?.getTorchState()
+            } else {
+                null
+            }
+        }
+    }
+    val cameraTorchState by (cameraTorchStateFlow ?: flowOf(null)).collectAsState(null)
+    val requestTorchOn by (torchState?.isOn ?: MutableStateFlow(null)).collectAsState()
 
     LaunchedEffect(zoomState, camera) {
         zoomState?.cameraFlow?.value = camera
@@ -50,6 +66,16 @@ fun CameraPreview(
     LaunchedEffect(zoomState, cameraZoomState) {
         zoomState?._ratioRange?.value = cameraZoomState?.run { minZoomRatio..maxZoomRatio }
         zoomState?._ratio?.value = cameraZoomState?.zoomRatio
+    }
+    LaunchedEffect(torchState, camera) {
+        torchState?._hasFlashUnit?.value = camera?.cameraInfo?.hasFlashUnit
+    }
+
+    LaunchedEffect(torchState, cameraTorchState) {
+        torchState?.isOn?.value = cameraTorchState == androidx.camera.core.TorchState.ON
+    }
+    LaunchedEffect(requestTorchOn, camera) {
+        requestTorchOn?.let { camera?.cameraControl?.enableTorch(it) }
     }
 
     var m = modifier
