@@ -61,7 +61,13 @@ fun CameraPreview(
         }
     }
     val cameraTorchState by (cameraTorchStateFlow ?: flowOf(null)).collectAsState(null)
-    val requestTorchOn by (torchState?.isOn ?: MutableStateFlow(null)).collectAsState()
+    val cameraTorchOn by remember(cameraTorchState) {
+        derivedStateOf { cameraTorchState == androidx.camera.core.TorchState.ON }
+    }
+    val requestTorchOn by (torchState?.isOnFlow
+        ?.filter { it?.fromCamera == false }
+        ?.map { it?.value }
+        ?: MutableStateFlow(null)).collectAsState(null)
 
     LaunchedEffect(zoomState, cameraZoomState) {
         zoomState ?: return@LaunchedEffect
@@ -81,10 +87,15 @@ fun CameraPreview(
         torchState?.hasFlashUnitFlow?.value = camera?.cameraInfo?.hasFlashUnit
     }
     LaunchedEffect(torchState, cameraTorchState) {
-        torchState?.isOn?.value = cameraTorchState == androidx.camera.core.TorchState.ON
+        torchState ?: return@LaunchedEffect
+        val newOn = cameraTorchState == androidx.camera.core.TorchState.ON
+        torchState.isOnFlow.value = CameraAttribute(newOn, true)
     }
-    LaunchedEffect(requestTorchOn, camera) {
-        requestTorchOn?.let { camera?.cameraControl?.enableTorch(it) }
+    LaunchedEffect(requestTorchOn, cameraTorchOn, camera) {
+        val newOn = requestTorchOn ?: return@LaunchedEffect
+        if (cameraTorchOn != newOn) {
+            camera?.cameraControl?.enableTorch(newOn)
+        }
     }
 
     var m = modifier
