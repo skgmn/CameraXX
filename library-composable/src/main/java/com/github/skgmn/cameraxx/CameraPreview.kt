@@ -27,7 +27,7 @@ fun CameraPreview(
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
     pinchZoomEnabled: Boolean = false,
-    zoomState: ZoomState? = null,
+    zoomState: ZoomState? = if (pinchZoomEnabled) remember { ZoomState() } else null,
     torchState: TorchState? = null
 ) {
     val cameraState = remember { mutableStateOf<StableCamera?>(null) }
@@ -235,4 +235,4 @@ private class PreviewViewBindings {
 }
 
 @Stable
-internal class StableCamera(camera: androidx.camera.core.Camera) : Camera(camera)
+private class StableCamera(camera: androidx.camera.core.Camera) : Camera(camera)
