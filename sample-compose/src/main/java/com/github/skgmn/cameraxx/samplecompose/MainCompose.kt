@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.skgmn.cameraxx.CameraPreview
+import com.github.skgmn.cameraxx.rememberZoomState
 import com.github.skgmn.startactivityx.PermissionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -28,11 +29,14 @@ fun MainScreen(
 ) {
     val permissionStatus by permissionStatusFlow.collectAsState(null)
     val preview by remember { mutableStateOf(viewModel.preview) }
-    val imageCapture by viewModel.imageCaptureState.collectAsState(null)
+    val imageCapture by viewModel.imageCaptureState.collectAsState()
     val permissionInitiallyRequested by viewModel.permissionsInitiallyRequestedState.collectAsState(
         false
     )
-    val savingPhoto by viewModel.savingPhotoState.collectAsState(false)
+    val savingPhoto by viewModel.savingPhotoState.collectAsState()
+    val zoomState = rememberZoomState()
+    val pinchZoomInProgress by zoomState.pinchZoomInProgress.collectAsState()
+    val zoomRatio by zoomState.ratio.collectAsState()
 
     Box(
         Modifier
@@ -45,8 +49,19 @@ fun MainScreen(
                 // Pass null to Preview so it can keep last preview frame while saving a photo
                 preview = if (savingPhoto) null else preview,
                 imageCapture = imageCapture,
-                pinchZoomEnabled = true
+                pinchZoomEnabled = true,
+                zoomState = zoomState
             )
+            if (pinchZoomInProgress) {
+                zoomRatio?.let { ratio ->
+                    Text(
+                        text = "%.1fx".format(ratio),
+                        color = Color(0xffffffff),
+                        fontSize = 36.sp,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
             Button(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

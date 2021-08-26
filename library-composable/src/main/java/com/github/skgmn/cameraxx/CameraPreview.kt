@@ -6,11 +6,13 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -24,42 +26,66 @@ fun CameraPreview(
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
     pinchZoomEnabled: Boolean = false,
-    cameraReceiver: (suspend (Camera) -> Unit)? = null
+    zoomState: ZoomState? = null
 ) {
-    val scope = rememberCoroutineScope()
     val cameraState = remember { mutableStateOf<StableCamera?>(null) }
     var camera by cameraState
-    val zoomStateFlow by remember(camera, pinchZoomEnabled) {
+    val currentZoomStateFlow by remember(camera, pinchZoomEnabled, zoomState) {
         derivedStateOf {
-            if (pinchZoomEnabled) {
+            if (pinchZoomEnabled || zoomState != null) {
                 camera?.cameraInfo?.getZoomState()
             } else {
                 null
             }
         }
     }
-    val zoomState by (zoomStateFlow ?: flowOf(null)).collectAsState(null)
-    val zoomRatio by remember(zoomState) { derivedStateOf { zoomState?.zoomRatio } }
+    val cameraZoomState by (currentZoomStateFlow ?: flowOf(null)).collectAsState(null)
+    val cameraZoomRatio by remember(cameraZoomState) {
+        derivedStateOf { cameraZoomState?.zoomRatio }
+    }
 
-    LaunchedEffect(camera, cameraReceiver) {
-        camera?.let { cameraReceiver?.invoke(it) }
+    LaunchedEffect(zoomState, camera) {
+        zoomState?.cameraFlow?.value = camera
+    }
+    LaunchedEffect(zoomState, cameraZoomState) {
+        zoomState?._ratioRange?.value = cameraZoomState?.run { minZoomRatio..maxZoomRatio }
+        zoomState?._ratio?.value = cameraZoomState?.zoomRatio
     }
 
     var m = modifier
     if (pinchZoomEnabled) {
         m = m.pointerInput(Unit) {
-            var zoomJob: Job? = null
-            detectTransformGestures { _, _, zoom, _ ->
-                val cam = camera ?: return@detectTransformGestures
-                val currentRatio = zoomRatio ?: return@detectTransformGestures
-                val minRatio = zoomState?.minZoomRatio ?: return@detectTransformGestures
-                val maxRatio = zoomState?.maxZoomRatio ?: return@detectTransformGestures
+            coroutineScope {
+                launch {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val pressed = event.changes.any { it.pressed }
+                            if (!pressed) {
+                                zoomState?._pinchZoomInProgress?.value = false
+                            }
+                        }
+                    }
+                }
+                launch {
+                    var zoomJob: Job? = null
+                    detectTransformGestures { _, _, zoom, _ ->
+                        if (zoom == 1f) return@detectTransformGestures
+                        val cam = camera ?: return@detectTransformGestures
+                        val currentRatio = cameraZoomRatio ?: return@detectTransformGestures
+                        val minRatio =
+                            cameraZoomState?.minZoomRatio ?: return@detectTransformGestures
+                        val maxRatio =
+                            cameraZoomState?.maxZoomRatio ?: return@detectTransformGestures
 
-                val newRatio = (currentRatio * zoom).coerceIn(minRatio, maxRatio)
-                if (currentRatio != newRatio) {
-                    zoomJob?.cancel()
-                    zoomJob = scope.launch {
-                        cam.cameraControl.setZoomRatio(newRatio)
+                        zoomState?._pinchZoomInProgress?.value = true
+                        val newRatio = (currentRatio * zoom).coerceIn(minRatio, maxRatio)
+                        if (currentRatio != newRatio) {
+                            zoomJob?.cancel()
+                            zoomJob = launch {
+                                cam.cameraControl.setZoomRatio(newRatio)
+                            }
+                        }
                     }
                 }
             }
