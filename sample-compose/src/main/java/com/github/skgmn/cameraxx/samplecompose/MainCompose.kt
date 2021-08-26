@@ -14,8 +14,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.skgmn.cameraxx.CameraPreview
-import com.github.skgmn.cameraxx.rememberTorchState
-import com.github.skgmn.cameraxx.rememberZoomState
+import com.github.skgmn.cameraxx.TorchState
+import com.github.skgmn.cameraxx.ZoomState
 import com.github.skgmn.startactivityx.PermissionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -29,70 +29,80 @@ fun MainScreen(
     onTakePhoto: () -> Unit
 ) {
     val permissionStatus by permissionStatusFlow.collectAsState(null)
-    val preview by remember { mutableStateOf(viewModel.preview) }
-    val imageCapture by viewModel.imageCaptureState.collectAsState()
     val permissionInitiallyRequested by viewModel.permissionsInitiallyRequestedState.collectAsState(
         false
     )
     val savingPhoto by viewModel.savingPhotoState.collectAsState()
 
-    val zoomState = rememberZoomState()
+    if (permissionStatus?.granted == true) {
+        CameraLayer(viewModel, savingPhoto, onTakePhoto)
+    }
+    if (permissionInitiallyRequested && permissionStatus?.denied == true) {
+        PermissionLayer(onRequestCameraPermission)
+    }
+    if (savingPhoto) {
+        SavingProgress()
+    }
+}
+
+@Composable
+private fun CameraLayer(
+    mainViewModel: MainViewModel,
+    savingPhoto: Boolean,
+    onTakePhoto: () -> Unit
+) {
+    val preview by remember { mutableStateOf(mainViewModel.preview) }
+    val imageCapture by mainViewModel.imageCaptureState.collectAsState()
+
+    val zoomState = remember { ZoomState() }
     val pinchZoomInProgress by zoomState.pinchZoomInProgress.collectAsState()
     val zoomRatio by zoomState.ratio.collectAsState()
 
-    val torchState = rememberTorchState()
+    val torchState = remember { TorchState() }
     val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
     val torchOn by torchState.isOn.collectAsState()
 
     Box(
-        Modifier
-            .fillMaxSize()
+        modifier = Modifier
             .background(Color(0xff000000))
+            .fillMaxSize()
     ) {
-        if (permissionStatus?.granted == true) {
-            CameraPreview(
-                modifier = Modifier.fillMaxSize(),
-                // Pass null to Preview so it can keep last preview frame while saving a photo
-                preview = if (savingPhoto) null else preview,
-                imageCapture = imageCapture,
-                pinchZoomEnabled = true,
-                zoomState = zoomState,
-                torchState = torchState
+        CameraPreview(
+            modifier = Modifier.fillMaxSize(),
+            // Pass null to Preview so it can keep last preview frame while saving a photo
+            preview = if (savingPhoto) null else preview,
+            imageCapture = imageCapture,
+            pinchZoomEnabled = true,
+            zoomState = zoomState,
+            torchState = torchState
+        )
+        if (pinchZoomInProgress && zoomRatio != null) {
+            Text(
+                text = "%.1fx".format(zoomRatio),
+                color = Color(0xffffffff),
+                fontSize = 36.sp,
+                modifier = Modifier.align(Alignment.Center)
             )
-            if (pinchZoomInProgress && zoomRatio != null) {
-                Text(
-                    text = "%.1fx".format(zoomRatio),
-                    color = Color(0xffffffff),
-                    fontSize = 36.sp,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-            Button(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp),
-                onClick = { onTakePhoto() }
-            ) {
-                Text(text = stringResource(R.string.take_photo))
-            }
-            if (hasFlashUnit == true) {
-                torchOn?.let { isOn ->
-                    Button(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset((-8).dp, 8.dp),
-                        onClick = { torchState.isOn.value = !isOn }
-                    ) {
-                        Text(if (isOn) "Off" else "On")
-                    }
+        }
+        Button(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
+            onClick = { onTakePhoto() }
+        ) {
+            Text(text = stringResource(R.string.take_photo))
+        }
+        if (hasFlashUnit == true) {
+            torchOn?.let { isOn ->
+                Button(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset((-8).dp, 8.dp),
+                    onClick = { torchState.isOn.value = !isOn }
+                ) {
+                    Text(if (isOn) "Off" else "On")
                 }
             }
-        }
-        if (permissionInitiallyRequested && permissionStatus?.denied == true) {
-            PermissionLayer(onRequestCameraPermission)
-        }
-        if (savingPhoto) {
-            SavingProgress()
         }
     }
 }
@@ -122,7 +132,9 @@ private fun PermissionLayer(onRequestCameraPermission: () -> Unit) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xff000000))
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(

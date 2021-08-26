@@ -1,6 +1,5 @@
 package com.github.skgmn.cameraxx
 
-import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -12,11 +11,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun CameraPreview(
@@ -47,6 +46,10 @@ fun CameraPreview(
     val cameraZoomRatio by remember(cameraZoomState) {
         derivedStateOf { cameraZoomState?.zoomRatio }
     }
+    val requestZoomRatio by (zoomState?.ratioFlow
+        ?.filter { it?.fromCamera == false }
+        ?.map { it?.value }
+        ?: MutableStateFlow(null)).collectAsState(null)
 
     val cameraTorchStateFlow by remember(camera, torchState) {
         derivedStateOf {
@@ -60,17 +63,23 @@ fun CameraPreview(
     val cameraTorchState by (cameraTorchStateFlow ?: flowOf(null)).collectAsState(null)
     val requestTorchOn by (torchState?.isOn ?: MutableStateFlow(null)).collectAsState()
 
-    LaunchedEffect(zoomState, camera) {
-        zoomState?.cameraFlow?.value = camera
-    }
     LaunchedEffect(zoomState, cameraZoomState) {
-        zoomState?._ratioRange?.value = cameraZoomState?.run { minZoomRatio..maxZoomRatio }
-        zoomState?._ratio?.value = cameraZoomState?.zoomRatio
+        zoomState ?: return@LaunchedEffect
+        zoomState.ratioRangeFlow.value = cameraZoomState?.run { minZoomRatio..maxZoomRatio }
+        zoomState.ratioFlow.value = cameraZoomState?.zoomRatio?.let {
+            CameraAttribute(it, true)
+        }
     }
-    LaunchedEffect(torchState, camera) {
-        torchState?._hasFlashUnit?.value = camera?.cameraInfo?.hasFlashUnit
+    LaunchedEffect(requestZoomRatio, cameraZoomRatio, camera) {
+        val newRatio = requestZoomRatio ?: return@LaunchedEffect
+        if (cameraZoomRatio != newRatio) {
+            camera?.cameraControl?.setZoomRatio(newRatio)
+        }
     }
 
+    LaunchedEffect(torchState, camera) {
+        torchState?.hasFlashUnitFlow?.value = camera?.cameraInfo?.hasFlashUnit
+    }
     LaunchedEffect(torchState, cameraTorchState) {
         torchState?.isOn?.value = cameraTorchState == androidx.camera.core.TorchState.ON
     }
@@ -88,29 +97,24 @@ fun CameraPreview(
                             val event = awaitPointerEvent(PointerEventPass.Initial)
                             val pressed = event.changes.any { it.pressed }
                             if (!pressed) {
-                                zoomState?._pinchZoomInProgress?.value = false
+                                zoomState?.pinchZoomInProgressFlow?.value = false
                             }
                         }
                     }
                 }
                 launch {
-                    var zoomJob: Job? = null
                     detectTransformGestures { _, _, zoom, _ ->
                         if (zoom == 1f) return@detectTransformGestures
-                        val cam = camera ?: return@detectTransformGestures
-                        val currentRatio = cameraZoomRatio ?: return@detectTransformGestures
+                        val camRatio = cameraZoomRatio ?: return@detectTransformGestures
                         val minRatio =
                             cameraZoomState?.minZoomRatio ?: return@detectTransformGestures
                         val maxRatio =
                             cameraZoomState?.maxZoomRatio ?: return@detectTransformGestures
 
-                        zoomState?._pinchZoomInProgress?.value = true
-                        val newRatio = (currentRatio * zoom).coerceIn(minRatio, maxRatio)
-                        if (currentRatio != newRatio) {
-                            zoomJob?.cancel()
-                            zoomJob = launch {
-                                cam.cameraControl.setZoomRatio(newRatio)
-                            }
+                        zoomState?.pinchZoomInProgressFlow?.value = true
+                        val newRatio = (camRatio * zoom).coerceIn(minRatio, maxRatio)
+                        if (camRatio != newRatio) {
+                            zoomState?.ratio?.value = newRatio
                         }
                     }
                 }
