@@ -30,8 +30,7 @@ fun CameraPreview(
     zoomState: ZoomState? = if (pinchZoomEnabled) remember { ZoomState() } else null,
     torchState: TorchState? = null
 ) {
-    val cameraState = remember { mutableStateOf<StableCamera?>(null) }
-    var camera by cameraState
+    var camera by remember<MutableState<StableCamera?>> { mutableStateOf(null) }
 
     val cameraZoomStateFlow by remember(camera, pinchZoomEnabled, zoomState) {
         derivedStateOf {
@@ -147,12 +146,12 @@ fun CameraPreview(
 @Composable
 private fun AndroidPreviewView(
     modifier: Modifier,
-    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
+    cameraSelector: CameraSelector,
     preview: Preview?,
-    imageCapture: ImageCapture? = null,
-    imageAnalysis: ImageAnalysis? = null,
-    scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
-    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
+    imageCapture: ImageCapture?,
+    imageAnalysis: ImageAnalysis?,
+    scaleType: PreviewView.ScaleType,
+    implementationMode: PreviewView.ImplementationMode,
     onCameraReceived: (StableCamera) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -172,54 +171,59 @@ private fun AndroidPreviewView(
                 view.implementationMode = implementationMode
             }
 
-            bindings.bindingJob?.cancel()
-            bindings.bindingJob = scope.launch {
-                val cameraProvider = view.context.getProcessCameraProvider()
-                val oldUseCases: List<UseCase>
-                val newUseCases: List<UseCase>
-                if (bindings.lifecycleOwner !== lifecycleOwner || bindings.cameraSelector != cameraSelector) {
-                    oldUseCases = listOfNotNull(
-                        bindings.preview,
-                        bindings.imageCapture,
-                        bindings.imageAnalysis
-                    )
-                    newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
-                } else {
-                    oldUseCases = listOfNotNull(
-                        bindings.preview?.takeIf { it !== preview },
-                        bindings.imageCapture?.takeIf { it !== imageCapture },
-                        bindings.imageAnalysis?.takeIf { it !== imageAnalysis }
-                    )
-                    newUseCases = listOfNotNull(
-                        preview.takeIf { it !== bindings.preview },
-                        imageCapture?.takeIf { it !== bindings.imageCapture },
-                        imageAnalysis?.takeIf { it !== bindings.imageAnalysis }
-                    )
-                }
-                if (oldUseCases.isNotEmpty()) {
-                    cameraProvider.unbind(*oldUseCases.toTypedArray())
-                }
-                if (newUseCases.isNotEmpty()) {
-                    val camera = StableCamera(
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            cameraSelector,
-                            *newUseCases.toTypedArray()
+            val oldUseCases: List<UseCase>
+            val newUseCases: List<UseCase>
+            if (bindings.lifecycleOwner !== lifecycleOwner ||
+                bindings.cameraSelector != cameraSelector
+            ) {
+                oldUseCases = listOfNotNull(
+                    bindings.preview,
+                    bindings.imageCapture,
+                    bindings.imageAnalysis
+                )
+                newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
+            } else {
+                oldUseCases = listOfNotNull(
+                    bindings.preview?.takeIf { it !== preview },
+                    bindings.imageCapture?.takeIf { it !== imageCapture },
+                    bindings.imageAnalysis?.takeIf { it !== imageAnalysis }
+                )
+                newUseCases = listOfNotNull(
+                    preview.takeIf { it !== bindings.preview },
+                    imageCapture?.takeIf { it !== bindings.imageCapture },
+                    imageAnalysis?.takeIf { it !== bindings.imageAnalysis }
+                )
+            }
+
+            if (oldUseCases.isNotEmpty() || newUseCases.isNotEmpty()) {
+                bindings.bindingJob?.cancel()
+                bindings.bindingJob = scope.launch(Dispatchers.Main.immediate) {
+                    val cameraProvider = view.context.getProcessCameraProvider()
+                    if (oldUseCases.isNotEmpty()) {
+                        cameraProvider.unbind(*oldUseCases.toTypedArray())
+                    }
+                    if (newUseCases.isNotEmpty()) {
+                        val camera = StableCamera(
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                cameraSelector,
+                                *newUseCases.toTypedArray()
+                            )
                         )
-                    )
-                    onCameraReceived(camera)
-                }
+                        onCameraReceived(camera)
+                    }
 
-                if (bindings.preview !== preview) {
-                    bindings.preview?.setSurfaceProvider(null)
-                    preview?.setSurfaceProvider(view.surfaceProvider)
-                }
+                    if (bindings.preview !== preview) {
+                        bindings.preview?.setSurfaceProvider(null)
+                        preview?.setSurfaceProvider(view.surfaceProvider)
+                    }
 
-                bindings.lifecycleOwner = lifecycleOwner
-                bindings.cameraSelector = cameraSelector
-                bindings.preview = preview
-                bindings.imageCapture = imageCapture
-                bindings.imageAnalysis = imageAnalysis
+                    bindings.lifecycleOwner = lifecycleOwner
+                    bindings.cameraSelector = cameraSelector
+                    bindings.preview = preview
+                    bindings.imageCapture = imageCapture
+                    bindings.imageAnalysis = imageAnalysis
+                }
             }
         }
     )
