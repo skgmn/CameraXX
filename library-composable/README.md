@@ -63,7 +63,7 @@ val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
 CameraPreview(
     torchState = torchState
 )
-if (hasFlashUnit == true) {
+if (hasFlashUnit == true && torchOn != null) {
     Button(
         onClick = { torchState.isOn.value = !torchOn }
     ) {
