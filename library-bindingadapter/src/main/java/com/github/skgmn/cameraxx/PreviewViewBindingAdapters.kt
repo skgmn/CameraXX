@@ -3,14 +3,18 @@ package com.github.skgmn.cameraxx
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
 import androidx.databinding.BindingAdapter
+import androidx.databinding.InverseBindingAdapter
+import androidx.databinding.InverseBindingListener
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.whenStarted
 import com.github.skgmn.cameraxx.bindingadapter.R
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.*
 import java.lang.ref.WeakReference
 
+@OptIn(ExperimentalCoroutinesApi::class)
 object PreviewViewBindingAdapters {
     @JvmStatic
     @BindingAdapter(
@@ -20,16 +24,14 @@ object PreviewViewBindingAdapters {
         "imageAnalysisUseCase",
         requireAll = false
     )
-    fun PreviewView.bind(
+    fun PreviewView.bindUseCases(
         newCameraSelector: CameraSelector?,
         newPreview: Preview?,
         newImageCapture: ImageCapture?,
         newImageAnalysis: ImageAnalysis?
     ) {
         requireNotNull(newCameraSelector) { "cameraSelector missing" }
-        val newLifecycleOwner = checkNotNull(ViewTreeLifecycleOwner.get(this)) {
-            "Cannot find LifecycleOwner"
-        }
+        val newLifecycleOwner = findLifecycleOwner()
 
         val bindings = getTag(R.id.previewViewBindings) as? Bindings
         val oldLifecycleOwner = bindings?.lifecycleOwner?.get()
@@ -98,6 +100,93 @@ object PreviewViewBindingAdapters {
             }
             setTag(R.id.previewViewBindingJob, newJob)
             newJob.start()
+        }
+    }
+
+    @JvmStatic
+    @BindingAdapter(
+        "zoomRatio",
+        "zoomRatioAttrChanged",
+        requireAll = false
+    )
+    fun PreviewView.bindZoomRatio(
+        zoomRatio: Float?,
+        zoomRatioAttrChanged: InverseBindingListener?,
+    ) {
+        val lifecycleOwner = findLifecycleOwner()
+
+        (getTag(R.id.previewViewZoomJob) as? Job)?.cancel()
+        val job = lifecycleOwner.lifecycleScope.launch(start = CoroutineStart.LAZY) {
+            lifecycleOwner.whenStarted {
+                val cameraZoomRatio = MutableStateFlow(
+                    getTag(R.id.previewViewZoomRatio) as? Float
+                )
+                launch {
+                    cameraFlow
+                        .flatMapLatest { it?.cameraInfo?.getZoomState() ?: emptyFlow() }
+                        .collect {
+                            cameraZoomRatio.value = it.zoomRatio
+                            setTag(R.id.previewViewZoomRatio, it.zoomRatio)
+                            if (zoomRatio == null) {
+                                zoomRatioAttrChanged?.onChange()
+                            }
+                        }
+                }
+                if (zoomRatio != null) {
+                    launch {
+                        combine(
+                            cameraFlow.filterNotNull(),
+                            cameraZoomRatio
+                        ) { camera, camZoomRatio ->
+                            if (camZoomRatio != zoomRatio) {
+                                suspend { camera.cameraControl.setZoomRatio(zoomRatio) }
+                            } else {
+                                null
+                            }
+                        }.collect {
+                            it?.invoke()
+                        }
+                    }
+                }
+            }
+        }
+        setTag(R.id.previewViewZoomJob, job)
+        job.start()
+    }
+
+    @JvmStatic
+    @BindingAdapter("onZoomRangeChanged")
+    fun PreviewView.bindListeners(
+        onZoomRangeChanged: OnZoomRangeChangedListener
+    ) {
+        val lifecycleOwner = findLifecycleOwner()
+
+        (getTag(R.id.previewViewListenerJob) as? Job)?.cancel()
+        lifecycleOwner.lifecycleScope.launch {
+            cameraFlow
+                .flatMapLatest { it?.cameraInfo?.getZoomState() ?: emptyFlow() }
+                .collect { onZoomRangeChanged.onZoomRangeChanged(it.minZoomRatio..it.maxZoomRatio) }
+        }
+    }
+
+    @JvmStatic
+    @InverseBindingAdapter(attribute = "zoomRatio")
+    fun PreviewView.getFirstZoomRatio(): Float? {
+        return getTag(R.id.previewViewZoomRatio) as? Float
+    }
+
+    private val PreviewView.cameraFlow: Flow<Camera?>
+        get() {
+            @Suppress("UNCHECKED_CAST")
+            return getTag(R.id.previewViewCameraFlow) as? MutableStateFlow<Camera?>
+                ?: MutableStateFlow<Camera?>(null).also {
+                    setTag(R.id.previewViewCameraFlow, it)
+                }
+        }
+
+    private fun PreviewView.findLifecycleOwner(): LifecycleOwner {
+        return checkNotNull(ViewTreeLifecycleOwner.get(this)) {
+            "Cannot find LifecycleOwner"
         }
     }
 

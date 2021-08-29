@@ -3,4 +3,7 @@
     <item name="previewViewBindingJob" type="id" />
     <item name="previewViewBindings" type="id" />
     <item name="previewViewCameraFlow" type="id" />
+    <item name="previewViewZoomRatio" type="id" />
+    <item name="previewViewZoomJob" type="id" />
+    <item name="previewViewListenerJob" type="id" />
 </resources>

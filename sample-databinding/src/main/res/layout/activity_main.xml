@@ -28,7 +28,21 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:previewUseCase="@{viewModel.cameraPermissionsGranted ? viewModel.previewUseCase : null}" />
+            app:onZoomRangeChanged="@{range -> viewModel.setZoomRange(range)}"
+            app:previewUseCase="@{viewModel.cameraPermissionsGranted ? viewModel.previewUseCase : null}"
+            app:zoomRatio="@={viewModel.zoomRatio}" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{String.format(`%.1fx`, viewModel.zoomRatio)}"
+            android:textColor="#ffffffff"
+            android:textSize="36sp"
+            android:visibility="@{viewModel.pinchZoomInProgress &amp;&amp; viewModel.zoomRatio != null ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <Button
             android:id="@+id/takePhotoButton"
