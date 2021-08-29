@@ -9,10 +9,6 @@
         <import type="android.view.View" />
 
         <variable
-            name="owner"
-            type="androidx.lifecycle.LifecycleOwner" />
-
-        <variable
             name="viewModel"
             type="com.github.skgmn.cameraxx.sampledatabinding.MainViewModel" />
 
@@ -32,8 +28,22 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:lifecycleOwner="@{owner}"
-            app:previewUseCase="@{viewModel.cameraPermissionsGranted ? viewModel.previewUseCase : null}" />
+            app:onCameraInfoRetrieved="@{cameraInfo -> viewModel.updateCameraInfo(cameraInfo)}"
+            app:previewUseCase="@{viewModel.cameraPermissionsGranted ? viewModel.previewUseCase : null}"
+            app:torchOn="@={viewModel.torchOn}"
+            app:zoomRatio="@={viewModel.zoomRatio}" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{String.format(`%.1fx`, viewModel.zoomRatio)}"
+            android:textColor="#ffffffff"
+            android:textSize="36sp"
+            android:visibility="@{viewModel.pinchZoomInProgress &amp;&amp; viewModel.zoomRatio != null ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <Button
             android:id="@+id/takePhotoButton"
@@ -46,6 +56,17 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            android:onClick="@{v -> viewModel.toggleTorch()}"
+            android:text="@{viewModel.torchOn ? `Off` : `On`}"
+            android:visibility="@{viewModel.cameraInfo.hasFlashUnit &amp;&amp; viewModel.torchOn != null ? View.VISIBLE : View.GONE}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <View
             android:id="@+id/permissionOverlayBackground"

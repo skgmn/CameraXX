@@ -1,11 +1,13 @@
 package com.github.skgmn.cameraxx.sampledatabinding
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.ScaleGestureDetector
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -27,7 +29,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
-        binding.owner = this
         binding.lifecycleOwner = this
         binding.viewModel = viewModel
 
@@ -40,11 +41,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun init() {
         handleEvents()
+        listenPinchZoom()
 
         lifecycleScope.launch {
             listenPermissionStatus(Manifest.permission.CAMERA).collect {
                 viewModel.cameraPermissionsGranted.value = it.granted
             }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun listenPinchZoom() {
+        val gestureDetector = ScaleGestureDetector(this,
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+                    viewModel.pinchZoomInProgress.value = true
+                    return true
+                }
+
+                override fun onScaleEnd(detector: ScaleGestureDetector?) {
+                    viewModel.pinchZoomInProgress.value = false
+                }
+
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    val zoomRange = viewModel.zoomRange.value ?: return false
+                    val zoomRatio = viewModel.zoomRatio.value ?: return false
+                    val newRatio = (zoomRatio * detector.scaleFactor).coerceIn(zoomRange)
+                    viewModel.zoomRatio.value = newRatio
+                    return true
+                }
+            })
+        binding.cameraPreview.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
         }
     }
 

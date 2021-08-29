@@ -5,14 +5,14 @@ plugins {
 }
 
 android {
-    compileSdk 31
+    compileSdk sdkVersion
 
     buildFeatures {
         compose = true
     }
     defaultConfig {
         minSdk 21
-        targetSdk 31
+        targetSdk sdkVersion
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -41,6 +41,7 @@ dependencies {
     debugApi project(":library")
     releaseApi "com.github.skgmn:cameraxx:$libraryVersion"
 
+    implementation "androidx.compose.material:material:$composeVersion"
     implementation "androidx.compose.ui:ui:$composeVersion"
 }
 

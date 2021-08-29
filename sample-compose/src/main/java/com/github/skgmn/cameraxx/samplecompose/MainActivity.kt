@@ -22,6 +22,7 @@ class MainActivity : FragmentActivity() {
         setContent {
             CameraXXTheme {
                 MainScreen(
+                    viewModel,
                     listenPermissionStatus(Manifest.permission.CAMERA),
                     onRequestCameraPermission = {
                         lifecycleScope.launch {
