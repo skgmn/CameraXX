@@ -7,6 +7,7 @@ import androidx.camera.core.Preview
 import androidx.camera.view.PreviewView
 import androidx.databinding.BindingAdapter
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ViewTreeLifecycleOwner
 import com.github.skgmn.cameraxx.bindingadapter.R
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
@@ -15,7 +16,6 @@ object PreviewViewBindingAdapters {
     @JvmStatic
     @DelicateCoroutinesApi
     @BindingAdapter(
-        "lifecycleOwner",
         "cameraSelector",
         "previewUseCase",
         "imageCaptureUseCase",
@@ -23,14 +23,15 @@ object PreviewViewBindingAdapters {
         requireAll = false
     )
     fun PreviewView.bind(
-        newLifecycleOwner: LifecycleOwner?,
         newCameraSelector: CameraSelector?,
         newPreview: Preview?,
         newImageCapture: ImageCapture?,
         newImageAnalysis: ImageAnalysis?
     ) {
-        newLifecycleOwner ?: throw IllegalArgumentException("lifecycleOwner missing")
-        newCameraSelector ?: throw IllegalArgumentException("cameraSelector missing")
+        requireNotNull(newCameraSelector) { "cameraSelector missing" }
+        val newLifecycleOwner = checkNotNull(ViewTreeLifecycleOwner.get(this)) {
+            "Cannot find LifecycleOwner"
+        }
 
         val prevJob = getTag(R.id.previewViewPrevBindingJob) as? Job
         prevJob?.cancel()

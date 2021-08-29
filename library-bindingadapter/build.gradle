@@ -37,6 +37,8 @@ android {
 dependencies {
     debugApi project(":library")
     releaseApi "com.github.skgmn:cameraxx:$libraryVersion"
+
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.3.1"
 }
 
 afterEvaluate {

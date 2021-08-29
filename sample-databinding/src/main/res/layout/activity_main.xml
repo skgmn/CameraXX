@@ -9,10 +9,6 @@
         <import type="android.view.View" />
 
         <variable
-            name="owner"
-            type="androidx.lifecycle.LifecycleOwner" />
-
-        <variable
             name="viewModel"
             type="com.github.skgmn.cameraxx.sampledatabinding.MainViewModel" />
 
@@ -32,7 +28,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:lifecycleOwner="@{owner}"
             app:previewUseCase="@{viewModel.cameraPermissionsGranted ? viewModel.previewUseCase : null}" />
 
         <Button
