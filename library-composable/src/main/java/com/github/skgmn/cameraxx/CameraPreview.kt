@@ -32,6 +32,7 @@ fun CameraPreview(
 ) {
     var camera by remember<MutableState<StableCamera?>> { mutableStateOf(null) }
 
+    // Zoom states
     val cameraZoomStateFlow by remember(camera, pinchZoomEnabled, zoomState) {
         derivedStateOf {
             if (pinchZoomEnabled || zoomState != null) {
@@ -50,6 +51,7 @@ fun CameraPreview(
         ?.map { it?.value }
         ?: MutableStateFlow(null)).collectAsState(null)
 
+    // Torch states
     val cameraTorchStateFlow by remember(camera, torchState) {
         derivedStateOf {
             if (torchState != null) {
@@ -66,13 +68,15 @@ fun CameraPreview(
     val requestTorchOn by (torchState?.isOnFlow
         ?.filter { it?.fromCamera == false }
         ?.map { it?.value }
-        ?: MutableStateFlow(null)).collectAsState(null)
+        ?: flowOf(null)).collectAsState(null)
 
+    // Side effects for zoom
     LaunchedEffect(zoomState, cameraZoomState) {
         zoomState ?: return@LaunchedEffect
-        zoomState.ratioRangeFlow.value = cameraZoomState?.run { minZoomRatio..maxZoomRatio }
-        zoomState.ratioFlow.value = cameraZoomState?.zoomRatio?.let {
-            CameraAttribute(it, true)
+        val camZoomState = cameraZoomState ?: return@LaunchedEffect
+        zoomState.ratioRangeFlow.value = camZoomState.run { minZoomRatio..maxZoomRatio }
+        if (zoomState.ratioFlow.value == null) {
+            zoomState.ratioFlow.compareAndSet(null, CameraAttribute(camZoomState.zoomRatio, true))
         }
     }
     LaunchedEffect(requestZoomRatio, cameraZoomRatio, camera) {
@@ -82,13 +86,16 @@ fun CameraPreview(
         }
     }
 
+    // Side effects for torch
     LaunchedEffect(torchState, camera) {
         torchState?.hasFlashUnitFlow?.value = camera?.cameraInfo?.hasFlashUnit
     }
     LaunchedEffect(torchState, cameraTorchState) {
         torchState ?: return@LaunchedEffect
         val newOn = cameraTorchState == androidx.camera.core.TorchState.ON
-        torchState.isOnFlow.value = CameraAttribute(newOn, true)
+        if (torchState.isOnFlow.value == null) {
+            torchState.isOnFlow.compareAndSet(null, CameraAttribute(newOn, true))
+        }
     }
     LaunchedEffect(requestTorchOn, cameraTorchOn, camera) {
         val newOn = requestTorchOn ?: return@LaunchedEffect
