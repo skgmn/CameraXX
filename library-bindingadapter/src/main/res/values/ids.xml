@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <item name="previewViewPrevBindingJob" type="id" />
-    <item name="previewViewCameraBindings" type="id" />
+    <item name="previewViewBindingJob" type="id" />
+    <item name="previewViewBindings" type="id" />
+    <item name="previewViewCameraFlow" type="id" />
 </resources>

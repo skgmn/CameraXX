@@ -1,20 +1,18 @@
 package com.github.skgmn.cameraxx
 
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.view.PreviewView
 import androidx.databinding.BindingAdapter
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.github.skgmn.cameraxx.bindingadapter.R
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.lang.ref.WeakReference
 
 object PreviewViewBindingAdapters {
     @JvmStatic
-    @DelicateCoroutinesApi
     @BindingAdapter(
         "cameraSelector",
         "previewUseCase",
@@ -33,78 +31,83 @@ object PreviewViewBindingAdapters {
             "Cannot find LifecycleOwner"
         }
 
-        val prevJob = getTag(R.id.previewViewPrevBindingJob) as? Job
-        prevJob?.cancel()
+        val bindings = getTag(R.id.previewViewBindings) as? Bindings
+        val oldLifecycleOwner = bindings?.lifecycleOwner?.get()
+        val oldCameraSelector = bindings?.cameraSelector
+        val oldPreview = bindings?.preview
+        val oldImageCapture = bindings?.imageCapture
+        val oldImageAnalysis = bindings?.imageAnalysis
 
-        val oldBindings = getTag(R.id.previewViewCameraBindings) as? CameraBindings
-
-        val newJob = GlobalScope.launch(Dispatchers.Main.immediate, start = CoroutineStart.LAZY) {
-            val oldLifecycleOwner = oldBindings?.lifecycleOwner?.get()
-            val oldCameraSelector = oldBindings?.cameraSelector
-            val oldPreview = oldBindings?.previewUseCase
-            val oldImageCapture = oldBindings?.imageCaptureUseCase
-            val oldImageAnalysis = oldBindings?.imageAnalysisUseCase
-
-            if (oldPreview !== newPreview) {
-                oldPreview?.setSurfaceProvider(null)
-                newPreview?.setSurfaceProvider(surfaceProvider)
-            }
-
-            val cameraProvider = context.getProcessCameraProvider()
-
-            if (oldLifecycleOwner !== newLifecycleOwner || oldCameraSelector != newCameraSelector) {
-                cameraProvider.unbind(oldPreview, oldImageCapture, oldImageAnalysis)
-                val newUseCases = listOfNotNull(newPreview, newImageCapture, newImageAnalysis)
-                if (newUseCases.isNotEmpty()) {
-                    cameraProvider.bindToLifecycle(
-                        newLifecycleOwner,
-                        newCameraSelector,
-                        *newUseCases.toTypedArray()
-                    )
-                }
-            }
-
-            val oldUseCases = listOfNotNull(
+        val oldUseCases: List<UseCase>
+        val newUseCases: List<UseCase>
+        if (oldLifecycleOwner !== newLifecycleOwner || oldCameraSelector != newCameraSelector) {
+            oldUseCases = listOfNotNull(oldPreview, oldImageCapture, oldImageAnalysis)
+            newUseCases = listOfNotNull(newPreview, newImageCapture, newImageAnalysis)
+        } else {
+            oldUseCases = listOfNotNull(
                 oldPreview?.takeIf { it !== newPreview },
                 oldImageCapture?.takeIf { it !== newImageCapture },
                 oldImageAnalysis?.takeIf { it !== newImageAnalysis }
             )
-            cameraProvider.unbind(*oldUseCases.toTypedArray())
-
-            val newUseCases = listOfNotNull(
-                newPreview?.takeIf { it !== oldPreview },
+            newUseCases = listOfNotNull(
+                newPreview.takeIf { it !== oldPreview },
                 newImageCapture?.takeIf { it !== oldImageCapture },
                 newImageAnalysis?.takeIf { it !== oldImageAnalysis }
             )
-            if (newUseCases.isNotEmpty()) {
-                cameraProvider.bindToLifecycle(
+        }
+
+        if (oldUseCases.isNotEmpty() || newUseCases.isNotEmpty()) {
+            (getTag(R.id.previewViewBindingJob) as? Job)?.cancel()
+            val newJob = newLifecycleOwner.lifecycleScope.launch(
+                context = Dispatchers.Main.immediate,
+                start = CoroutineStart.LAZY
+            ) {
+                val cameraProvider = context.getProcessCameraProvider()
+                if (oldUseCases.isNotEmpty()) {
+                    cameraProvider.unbind(*oldUseCases.toTypedArray())
+                }
+                if (newUseCases.isNotEmpty()) {
+                    val camera = Camera(
+                        cameraProvider.bindToLifecycle(
+                            newLifecycleOwner,
+                            newCameraSelector,
+                            *newUseCases.toTypedArray()
+                        )
+                    )
+                    @Suppress("UNCHECKED_CAST")
+                    (getTag(R.id.previewViewCameraFlow) as? MutableStateFlow<Camera?>)?.let {
+                        it.value = camera
+                    } ?: MutableStateFlow(camera).also {
+                        setTag(R.id.previewViewCameraFlow, it)
+                    }
+                }
+
+                if (oldPreview !== newPreview) {
+                    oldPreview?.setSurfaceProvider(null)
+                    newPreview?.setSurfaceProvider(surfaceProvider)
+                }
+
+                val newBindings = Bindings(
                     newLifecycleOwner,
                     newCameraSelector,
-                    *newUseCases.toTypedArray()
+                    newPreview,
+                    newImageCapture,
+                    newImageAnalysis
                 )
+                setTag(R.id.previewViewBindings, newBindings)
             }
-
-            val newBindings = CameraBindings(
-                newLifecycleOwner,
-                newCameraSelector,
-                newPreview,
-                newImageCapture,
-                newImageAnalysis
-            )
-            setTag(R.id.previewViewCameraBindings, newBindings)
+            setTag(R.id.previewViewBindingJob, newJob)
+            newJob.start()
         }
-        setTag(R.id.previewViewPrevBindingJob, newJob)
-        newJob.start()
     }
 
-    private class CameraBindings(
-        lifecycleOwner: LifecycleOwner?,
-        val cameraSelector: CameraSelector?,
-        val previewUseCase: Preview?,
-        val imageCaptureUseCase: ImageCapture?,
-        val imageAnalysisUseCase: ImageAnalysis?
+    private class Bindings(
+        lifecycleOwner: LifecycleOwner,
+        val cameraSelector: CameraSelector,
+        val preview: Preview?,
+        val imageCapture: ImageCapture?,
+        val imageAnalysis: ImageAnalysis?
     ) {
-        val lifecycleOwner: WeakReference<LifecycleOwner>? =
-            lifecycleOwner?.let { WeakReference(it) }
+        val lifecycleOwner = WeakReference(lifecycleOwner)
     }
 }
