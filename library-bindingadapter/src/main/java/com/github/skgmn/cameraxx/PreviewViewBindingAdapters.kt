@@ -126,8 +126,8 @@ object PreviewViewBindingAdapters {
                         .flatMapLatest { it?.cameraInfo?.getZoomState() ?: emptyFlow() }
                         .collect {
                             cameraZoomRatio.value = it.zoomRatio
-                            setTag(R.id.previewViewZoomRatio, it.zoomRatio)
                             if (zoomRatio == null) {
+                                setTag(R.id.previewViewZoomRatio, it.zoomRatio)
                                 zoomRatioAttrChanged?.onChange()
                             }
                         }
@@ -155,24 +155,86 @@ object PreviewViewBindingAdapters {
     }
 
     @JvmStatic
-    @BindingAdapter("onZoomRangeChanged")
+    @BindingAdapter(
+        "torchOn",
+        "torchOnAttrChanged",
+        requireAll = false
+    )
+    fun PreviewView.bindTorchOn(
+        torchOn: Boolean?,
+        torchOnAttrChanged: InverseBindingListener?,
+    ) {
+        val lifecycleOwner = findLifecycleOwner()
+
+        (getTag(R.id.previewViewTorchJob) as? Job)?.cancel()
+        val job = lifecycleOwner.lifecycleScope.launch(start = CoroutineStart.LAZY) {
+            lifecycleOwner.whenStarted {
+                val cameraTorchOn = MutableStateFlow(
+                    getTag(R.id.previewViewTorchOn) as? Boolean
+                )
+                launch {
+                    cameraFlow
+                        .flatMapLatest { it?.cameraInfo?.getTorchState() ?: emptyFlow() }
+                        .collect {
+                            val on = it == TorchState.ON
+                            cameraTorchOn.value = on
+                            if (torchOn == null) {
+                                setTag(R.id.previewViewTorchOn, on)
+                                torchOnAttrChanged?.onChange()
+                            }
+                        }
+                }
+                if (torchOn != null) {
+                    launch {
+                        combine(
+                            cameraFlow.filterNotNull(),
+                            cameraTorchOn
+                        ) { camera, camTorchOn ->
+                            if (camTorchOn != torchOn) {
+                                suspend { camera.cameraControl.enableTorch(torchOn) }
+                            } else {
+                                null
+                            }
+                        }.collect {
+                            it?.invoke()
+                        }
+                    }
+                }
+            }
+        }
+        setTag(R.id.previewViewTorchJob, job)
+        job.start()
+    }
+
+    @JvmStatic
+    @BindingAdapter(
+        "onCameraInfoRetrieved"
+    )
     fun PreviewView.bindListeners(
-        onZoomRangeChanged: OnZoomRangeChangedListener
+        onCameraInfoRetrieved: OnCameraInfoRetrievedListener
     ) {
         val lifecycleOwner = findLifecycleOwner()
 
         (getTag(R.id.previewViewListenerJob) as? Job)?.cancel()
-        lifecycleOwner.lifecycleScope.launch {
-            cameraFlow
-                .flatMapLatest { it?.cameraInfo?.getZoomState() ?: emptyFlow() }
-                .collect { onZoomRangeChanged.onZoomRangeChanged(it.minZoomRatio..it.maxZoomRatio) }
+        val job = lifecycleOwner.lifecycleScope.launch(start = CoroutineStart.LAZY) {
+            cameraFlow.filterNotNull().collect {
+                onCameraInfoRetrieved.onCameraInfoRetrieved(it.cameraInfo)
+            }
         }
+        setTag(R.id.previewViewListenerJob, job)
+        job.start()
     }
 
     @JvmStatic
     @InverseBindingAdapter(attribute = "zoomRatio")
     fun PreviewView.getFirstZoomRatio(): Float? {
         return getTag(R.id.previewViewZoomRatio) as? Float
+    }
+
+    @JvmStatic
+    @InverseBindingAdapter(attribute = "torchOn")
+    fun PreviewView.getFirstTorchOn(): Boolean? {
+        return getTag(R.id.previewViewTorchOn) as? Boolean
     }
 
     private val PreviewView.cameraFlow: Flow<Camera?>

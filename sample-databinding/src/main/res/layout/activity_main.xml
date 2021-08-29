@@ -28,8 +28,9 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:onZoomRangeChanged="@{range -> viewModel.setZoomRange(range)}"
+            app:onCameraInfoRetrieved="@{cameraInfo -> viewModel.updateCameraInfo(cameraInfo)}"
             app:previewUseCase="@{viewModel.cameraPermissionsGranted ? viewModel.previewUseCase : null}"
+            app:torchOn="@={viewModel.torchOn}"
             app:zoomRatio="@={viewModel.zoomRatio}" />
 
         <TextView
@@ -55,6 +56,17 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
+            android:onClick="@{v -> viewModel.toggleTorch()}"
+            android:text="@{viewModel.torchOn ? `Off` : `On`}"
+            android:visibility="@{viewModel.cameraInfo.hasFlashUnit &amp;&amp; viewModel.torchOn != null ? View.VISIBLE : View.GONE}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <View
             android:id="@+id/permissionOverlayBackground"

@@ -11,6 +11,7 @@ import androidx.camera.core.TorchState
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.skgmn.cameraxx.Camera
+import com.github.skgmn.cameraxx.CameraInfo
 import com.github.skgmn.cameraxx.takePicture
 import com.github.skgmn.viewmodelevent.publicEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,8 +22,6 @@ import kotlinx.coroutines.launch
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _imageCaptureUseCase = MutableStateFlow(newImageCapture())
 
-    private val torchOn = MutableStateFlow<Boolean?>(null)
-
     val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
     val previewUseCase = Preview.Builder().build()
     val imageCaptureUseCase: StateFlow<ImageCapture> = _imageCaptureUseCase
@@ -31,7 +30,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cameraPermissionsGranted = MutableStateFlow(false)
     val pinchZoomInProgress = MutableStateFlow(false)
     val zoomRatio = MutableStateFlow<Float?>(null)
-    var zoomRange: ClosedRange<Float>? = null
+    val torchOn = MutableStateFlow<Boolean?>(null)
+    val cameraInfo = MutableStateFlow<CameraInfo?>(null)
+    val zoomRange = cameraInfo
+        .flatMapLatest { it?.getZoomState() ?: emptyFlow() }
+        .map { it.minZoomRatio..it.maxZoomRatio }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val requestCameraPermissionsByUserEvent = publicEvent<Any>()
     val requestTakePhotoPermissionsEvent = publicEvent<Any>()
@@ -60,6 +64,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun replaceImageCapture() {
         _imageCaptureUseCase.value = newImageCapture()
+    }
+
+    fun updateCameraInfo(cameraInfo: CameraInfo) {
+        this.cameraInfo.value = cameraInfo
+    }
+
+    fun toggleTorch() {
+        torchOn.value = !(torchOn.value ?: return)
     }
 
     private fun newImageCapture() = ImageCapture.Builder().build()

@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onScale(detector: ScaleGestureDetector): Boolean {
-                    val zoomRange = viewModel.zoomRange ?: return false
+                    val zoomRange = viewModel.zoomRange.value ?: return false
                     val zoomRatio = viewModel.zoomRatio.value ?: return false
                     val newRatio = (zoomRatio * detector.scaleFactor).coerceIn(zoomRange)
                     viewModel.zoomRatio.value = newRatio
