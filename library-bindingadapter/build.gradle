@@ -6,14 +6,14 @@ plugins {
 }
 
 android {
-    compileSdk 31
+    compileSdk sdkVersion
 
     dataBinding {
         enabled = true
     }
     defaultConfig {
         minSdk 21
-        targetSdk 31
+        targetSdk sdkVersion
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
