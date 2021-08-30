@@ -52,26 +52,30 @@ fun CameraPreview(
                             old.zoomRatio == new.zoomRatio
                 }
         }.collectAsState(null)
-        val cameraZoomRatio = remember { derivedStateOf { cameraZoomState?.zoomRatio } }
+        val cameraZoomRatio by remember { derivedStateOf { cameraZoomState?.zoomRatio } }
         val requestZoomRatio by remember(zoomState) {
             zoomState.ratioFlow
                 .filter { it?.fromCamera == false }
                 .map { it?.value }
         }.collectAsState(null)
+        val ratioRange by remember {
+            derivedStateOf { cameraZoomState?.run { minZoomRatio..maxZoomRatio } }
+        }
 
-        LaunchedEffect(zoomState, cameraZoomState) {
-            val camZoomState = cameraZoomState ?: return@LaunchedEffect
-            zoomState.ratioRangeFlow.value = camZoomState.run { minZoomRatio..maxZoomRatio }
+        LaunchedEffect(zoomState, ratioRange) {
+            zoomState.ratioRangeFlow.value = ratioRange ?: return@LaunchedEffect
+        }
+        LaunchedEffect(zoomState, cameraZoomRatio) {
             if (zoomState.ratioFlow.value == null) {
                 zoomState.ratioFlow.compareAndSet(
                     null,
-                    CameraAttribute(camZoomState.zoomRatio, true)
+                    CameraAttribute(cameraZoomRatio ?: return@LaunchedEffect, true)
                 )
             }
         }
         LaunchedEffect(requestZoomRatio, cameraZoomRatio, cam) {
             val newRatio = requestZoomRatio ?: return@LaunchedEffect
-            if (cameraZoomRatio.value != newRatio) {
+            if (cameraZoomRatio != newRatio) {
                 cam.cameraControl.setZoomRatio(newRatio)
             }
         }
@@ -95,13 +99,10 @@ fun CameraPreview(
                             if (zoom == 1f) return@detectTransformGestures
                             val currentRatio =
                                 zoomState.ratio.value ?: return@detectTransformGestures
-                            val minRatio =
-                                cameraZoomState?.minZoomRatio ?: return@detectTransformGestures
-                            val maxRatio =
-                                cameraZoomState?.maxZoomRatio ?: return@detectTransformGestures
+                            val range = ratioRange ?: return@detectTransformGestures
 
                             zoomState.pinchZoomInProgressFlow.value = true
-                            val newRatio = (currentRatio * zoom).coerceIn(minRatio, maxRatio)
+                            val newRatio = (currentRatio * zoom).coerceIn(range)
                             if (currentRatio != newRatio) {
                                 zoomState.ratio.value = newRatio
                             }
