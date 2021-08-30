@@ -1,22 +1,27 @@
 package com.github.skgmn.cameraxx
 
+import android.util.Log
 import androidx.camera.core.*
+import androidx.camera.core.CameraControl
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
+import java.util.concurrent.TimeUnit
+import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
 
+@OptIn(ExperimentalTime::class)
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
@@ -28,7 +33,8 @@ fun CameraPreview(
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
     pinchZoomEnabled: Boolean = false,
     zoomState: ZoomState? = if (pinchZoomEnabled) remember { ZoomState() } else null,
-    torchState: TorchState? = null
+    torchState: TorchState? = null,
+    focusMeteringState: FocusMeteringState? = null
 ) {
     var camera by remember<MutableState<StableCamera?>> { mutableStateOf(null) }
 
@@ -139,6 +145,84 @@ fun CameraPreview(
         }
     }
 
+    var meteringPointFactory by remember { mutableStateOf<MeteringPointFactory?>(null) }
+
+    // Focus metering states
+    run {
+        focusMeteringState ?: return@run
+        val capturedMeteringPointFactory = meteringPointFactory ?: return@run
+        val cam = camera ?: return@run
+
+        val requestMeteringParameters by focusMeteringState.meteringParameters.collectAsState()
+        val requestMeteringPoints by focusMeteringState.meteringPoints.collectAsState()
+        var tapPosition by remember { mutableStateOf<Offset?>(null) }
+        val meteringPoints by if (requestMeteringPoints === FocusMeteringState.TapPoint) {
+            remember(tapPosition) {
+                derivedStateOf {
+                    val tap = tapPosition ?: return@derivedStateOf emptyList()
+                    listOf(capturedMeteringPointFactory.createPoint(tap.x, tap.y))
+                }
+            }
+        } else {
+            remember(requestMeteringPoints) {
+                derivedStateOf {
+                    requestMeteringPoints.map {
+                        capturedMeteringPointFactory.createPoint(it.x, it.y)
+                    }
+                }
+            }
+        }
+        val focusMeteringAction by remember(requestMeteringParameters, meteringPoints) {
+            derivedStateOf {
+                if (meteringPoints.isEmpty()) return@derivedStateOf null
+
+                val meteringMode = requestMeteringParameters.meteringMode
+                val autoCancelDuration = requestMeteringParameters.autoCancelDuration
+                var builder = FocusMeteringAction.Builder(meteringPoints[0], meteringMode.value)
+                if (meteringPoints.size > 1) {
+                    for (i in 1 until meteringPoints.size) {
+                        builder = builder.addPoint(meteringPoints[i], meteringMode.value)
+                    }
+                }
+                builder = if (autoCancelDuration == null) {
+                    builder.disableAutoCancel()
+                } else {
+                    builder.setAutoCancelDuration(
+                        autoCancelDuration.toLong(DurationUnit.MILLISECONDS),
+                        TimeUnit.MILLISECONDS
+                    )
+                }
+                builder.build()
+            }
+        }
+        LaunchedEffect(focusMeteringAction) {
+            if (focusMeteringState.progressFlow.value == FocusMeteringProgress.InProgress) {
+                focusMeteringState.progressFlow.value = FocusMeteringProgress.Cancelled
+            }
+            cam.cameraControl.cancelFocusAndMetering()
+            focusMeteringAction?.let {
+                try {
+                    focusMeteringState.progressFlow.value = FocusMeteringProgress.InProgress
+                    Log.v("asdf", "focus metering...")
+                    val result = cam.cameraControl.startFocusAndMetering(it)
+                    focusMeteringState.progressFlow.value = if (result.isFocusSuccessful) {
+                        FocusMeteringProgress.Succeeded
+                    } else {
+                        FocusMeteringProgress.Failed
+                    }
+                } catch (e: CameraControl.OperationCanceledException) {
+                    focusMeteringState.progressFlow.value = FocusMeteringProgress.Cancelled
+                }
+            }
+        }
+
+        if (requestMeteringPoints === FocusMeteringState.TapPoint) {
+            m = m.pointerInput(Unit) {
+                detectTapGestures(onTap = { tapPosition = it })
+            }
+        }
+    }
+
     AndroidPreviewView(
         m,
         cameraSelector,
@@ -146,8 +230,12 @@ fun CameraPreview(
         imageCapture,
         imageAnalysis,
         scaleType,
-        implementationMode
-    ) { camera = it }
+        implementationMode,
+        onCameraReceived = { camera = it },
+        onViewCreated = {
+            meteringPointFactory = it.meteringPointFactory
+        }
+    )
 }
 
 @Composable
@@ -159,7 +247,8 @@ private fun AndroidPreviewView(
     imageAnalysis: ImageAnalysis?,
     scaleType: PreviewView.ScaleType,
     implementationMode: PreviewView.ImplementationMode,
-    onCameraReceived: (StableCamera) -> Unit
+    onCameraReceived: (StableCamera) -> Unit,
+    onViewCreated: (PreviewView) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val lifecycleOwner by rememberUpdatedState(LocalLifecycleOwner.current)
@@ -168,7 +257,9 @@ private fun AndroidPreviewView(
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            PreviewView(context)
+            PreviewView(context).also {
+                onViewCreated(it)
+            }
         },
         update = { view ->
             if (view.scaleType != scaleType) {
@@ -219,6 +310,7 @@ private fun AndroidPreviewView(
                         )
                         onCameraReceived(camera)
                     }
+                    view.meteringPointFactory
 
                     if (bindings.preview !== preview) {
                         bindings.preview?.setSurfaceProvider(null)

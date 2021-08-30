@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.skgmn.cameraxx.CameraPreview
+import com.github.skgmn.cameraxx.FocusMeteringState
 import com.github.skgmn.cameraxx.TorchState
 import com.github.skgmn.cameraxx.ZoomState
 import com.github.skgmn.startactivityx.PermissionStatus
@@ -62,6 +63,8 @@ private fun CameraLayer(
     val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
     val torchOn by torchState.isOn.collectAsState()
 
+    val focusMeteringState = remember { FocusMeteringState() }
+
     Box(
         modifier = Modifier
             .background(Color(0xff000000))
@@ -74,7 +77,8 @@ private fun CameraLayer(
             imageCapture = imageCapture,
             pinchZoomEnabled = true,
             zoomState = zoomState,
-            torchState = torchState
+            torchState = torchState,
+            focusMeteringState = focusMeteringState
         )
         if (pinchZoomInProgress && zoomRatio != null) {
             Text(
