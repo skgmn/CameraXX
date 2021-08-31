@@ -176,7 +176,11 @@ fun CameraPreview(
             if (focusMeteringState.progressFlow.value == FocusMeteringProgress.InProgress) {
                 focusMeteringState.progressFlow.value = FocusMeteringProgress.Cancelled
             }
-            cam.cameraControl.cancelFocusAndMetering()
+            try {
+                cam.cameraControl.cancelFocusAndMetering()
+            } catch (e: OperationCanceledException) {
+                // Camera is not initialized. Ignore it.
+            }
             focusMeteringAction?.let {
                 try {
                     focusMeteringState.progressFlow.value = FocusMeteringProgress.InProgress
