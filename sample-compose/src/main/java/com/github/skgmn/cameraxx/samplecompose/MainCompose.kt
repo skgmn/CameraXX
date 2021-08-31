@@ -56,8 +56,6 @@ private fun CameraLayer(
     val imageCapture by mainViewModel.imageCaptureState.collectAsState()
 
     val zoomState = remember { ZoomState() }
-    val pinchZoomInProgress by zoomState.pinchZoomInProgress.collectAsState()
-    val zoomRatio by zoomState.ratio.collectAsState()
 
     val torchState = remember { TorchState() }
     val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
@@ -80,9 +78,9 @@ private fun CameraLayer(
             torchState = torchState,
             focusMeteringState = focusMeteringState
         )
-        if (pinchZoomInProgress && zoomRatio != null) {
+        if (zoomState.pinchZoomInProgress && zoomState.ratio != null) {
             Text(
-                text = "%.1fx".format(zoomRatio),
+                text = "%.1fx".format(zoomState.ratio),
                 color = Color(0xffffffff),
                 fontSize = 36.sp,
                 modifier = Modifier.align(Alignment.Center)

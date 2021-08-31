@@ -48,24 +48,19 @@ fun CameraPreview(
                 }
         }.collectAsState(null)
         val cameraZoomRatio by remember { derivedStateOf { cameraZoomState?.zoomRatio } }
-        val requestZoomRatio by remember(zoomState) {
-            zoomState.ratioFlow
-                .filter { it?.fromCamera == false }
-                .map { it?.value }
-        }.collectAsState(null)
-        val ratioRange by remember {
+        val cameraRatioRange by remember {
             derivedStateOf { cameraZoomState?.run { minZoomRatio..maxZoomRatio } }
         }
+        val requestZoomRatio by remember { derivedStateOf { zoomState.ratio } }
 
-        LaunchedEffect(zoomState, ratioRange) {
-            zoomState.ratioRangeFlow.value = ratioRange ?: return@LaunchedEffect
+        LaunchedEffect(zoomState, cameraRatioRange) {
+            zoomState.ratioRangeState.value = cameraRatioRange ?: return@LaunchedEffect
         }
-        LaunchedEffect(zoomState, cameraZoomRatio) {
-            if (zoomState.ratioFlow.value == null) {
-                zoomState.ratioFlow.compareAndSet(
-                    null,
-                    CameraAttribute(cameraZoomRatio ?: return@LaunchedEffect, true)
-                )
+        if (requestZoomRatio == null) {
+            LaunchedEffect(zoomState, cameraZoomRatio) {
+                if (zoomState.ratio == null && cameraZoomRatio != null) {
+                    zoomState.ratio = cameraZoomRatio
+                }
             }
         }
         LaunchedEffect(requestZoomRatio, cameraZoomRatio, cam) {
@@ -84,7 +79,7 @@ fun CameraPreview(
                                 val event = awaitPointerEvent(PointerEventPass.Initial)
                                 val pressed = event.changes.any { it.pressed }
                                 if (!pressed) {
-                                    zoomState.pinchZoomInProgressFlow.value = false
+                                    zoomState.pinchZoomInProgressState.value = false
                                 }
                             }
                         }
@@ -92,14 +87,13 @@ fun CameraPreview(
                     launch {
                         detectTransformGestures { _, _, zoom, _ ->
                             if (zoom == 1f) return@detectTransformGestures
-                            val currentRatio =
-                                zoomState.ratio.value ?: return@detectTransformGestures
-                            val range = ratioRange ?: return@detectTransformGestures
+                            val currentRatio = requestZoomRatio ?: return@detectTransformGestures
+                            val range = cameraRatioRange ?: return@detectTransformGestures
 
-                            zoomState.pinchZoomInProgressFlow.value = true
+                            zoomState.pinchZoomInProgressState.value = true
                             val newRatio = (currentRatio * zoom).coerceIn(range)
                             if (currentRatio != newRatio) {
-                                zoomState.ratio.value = newRatio
+                                zoomState.ratio = newRatio
                             }
                         }
                     }
@@ -179,7 +173,7 @@ fun CameraPreview(
             try {
                 cam.cameraControl.cancelFocusAndMetering()
             } catch (e: OperationCanceledException) {
-                // Camera is not initialized. Ignore it.
+                // Camera is not active. Ignore it.
             }
             focusMeteringAction?.let {
                 try {
