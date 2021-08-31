@@ -56,11 +56,7 @@ private fun CameraLayer(
     val imageCapture by mainViewModel.imageCaptureState.collectAsState()
 
     val zoomState = remember { ZoomState() }
-
     val torchState = remember { TorchState() }
-    val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
-    val torchOn by torchState.isOn.collectAsState()
-
     val focusMeteringState = remember { FocusMeteringState() }
 
     Box(
@@ -94,13 +90,13 @@ private fun CameraLayer(
         ) {
             Text(text = stringResource(R.string.take_photo))
         }
-        if (hasFlashUnit == true) {
-            torchOn?.let { isOn ->
+        if (torchState.hasFlashUnit == true) {
+            torchState.isOn?.let { isOn ->
                 Button(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .offset((-8).dp, 8.dp),
-                    onClick = { torchState.isOn.value = !isOn }
+                    onClick = { torchState.isOn = !isOn }
                 ) {
                     Text(if (isOn) "Off" else "On")
                 }

@@ -1,12 +1,13 @@
 package com.github.skgmn.cameraxx
 
-import kotlinx.coroutines.flow.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 class TorchState {
-    internal val isOnFlow = MutableStateFlow<CameraAttribute<Boolean>?>(null)
-    internal val hasFlashUnitFlow = MutableStateFlow<Boolean?>(null)
+    internal val isOnState = mutableStateOf<Boolean?>(null)
+    internal val hasFlashUnitState = mutableStateOf<Boolean?>(null)
 
-    val isOn: MutableStateFlow<Boolean?> = CameraAttributeStateFlow(isOnFlow)
-    val hasFlashUnit: StateFlow<Boolean?>
-        get() = hasFlashUnitFlow
+    var isOn by isOnState
+    val hasFlashUnit by hasFlashUnitState
 }

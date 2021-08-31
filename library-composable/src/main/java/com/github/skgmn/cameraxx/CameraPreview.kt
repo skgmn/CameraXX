@@ -110,19 +110,17 @@ fun CameraPreview(
             cam.cameraInfo.getTorchState()
                 .map { it == androidx.camera.core.TorchState.ON }
         }.collectAsState(null)
-        val requestTorchOn by remember {
-            torchState.isOnFlow
-                .filter { it?.fromCamera == false }
-                .map { it?.value }
-        }.collectAsState(null)
+        val requestTorchOn by remember { derivedStateOf { torchState.isOn } }
 
         LaunchedEffect(torchState, cam) {
-            torchState.hasFlashUnitFlow.value = cam.cameraInfo.hasFlashUnit
+            torchState.hasFlashUnitState.value = cam.cameraInfo.hasFlashUnit
         }
-        LaunchedEffect(torchState, cameraTorchOn) {
-            val on = cameraTorchOn ?: return@LaunchedEffect
-            if (torchState.isOnFlow.value == null) {
-                torchState.isOnFlow.compareAndSet(null, CameraAttribute(on, true))
+        if (requestTorchOn == null) {
+            LaunchedEffect(torchState, cameraTorchOn) {
+                val on = cameraTorchOn ?: return@LaunchedEffect
+                if (torchState.isOnState.value == null) {
+                    torchState.isOnState.value = on
+                }
             }
         }
         LaunchedEffect(requestTorchOn, cameraTorchOn, cam) {
