@@ -136,8 +136,8 @@ fun CameraPreview(
         val pointFactory = meteringPointFactory ?: return@focusMetering
         val cam = camera ?: return@focusMetering
 
-        val requestMeteringParameters by focusMeteringState.meteringParameters.collectAsState()
-        val requestMeteringPoints by focusMeteringState.meteringPoints.collectAsState()
+        val requestMeteringParameters = focusMeteringState.meteringParameters
+        val requestMeteringPoints = focusMeteringState.meteringPoints
         val meteringPoints by remember(requestMeteringPoints) {
             requestMeteringPoints.getOffsets()
                 .map { list ->
@@ -149,6 +149,8 @@ fun CameraPreview(
                 if (meteringPoints.isEmpty()) return@derivedStateOf null
 
                 val meteringMode = requestMeteringParameters.meteringMode
+                if (meteringMode == MeteringMode.None) return@derivedStateOf null
+
                 val autoCancelDurationMs = requestMeteringParameters.autoCancelDurationMs
                 var builder = FocusMeteringAction.Builder(meteringPoints[0], meteringMode.value)
                 if (meteringPoints.size > 1) {
@@ -164,9 +166,9 @@ fun CameraPreview(
                 builder.build()
             }
         }
-        LaunchedEffect(focusMeteringAction) {
-            if (focusMeteringState.progressFlow.value == FocusMeteringProgress.InProgress) {
-                focusMeteringState.progressFlow.value = FocusMeteringProgress.Cancelled
+        LaunchedEffect(focusMeteringAction, cam) {
+            if (focusMeteringState.progressState.value == FocusMeteringProgress.InProgress) {
+                focusMeteringState.progressState.value = FocusMeteringProgress.Cancelled
             }
             try {
                 cam.cameraControl.cancelFocusAndMetering()
@@ -175,15 +177,15 @@ fun CameraPreview(
             }
             focusMeteringAction?.let {
                 try {
-                    focusMeteringState.progressFlow.value = FocusMeteringProgress.InProgress
+                    focusMeteringState.progressState.value = FocusMeteringProgress.InProgress
                     val result = cam.cameraControl.startFocusAndMetering(it)
-                    focusMeteringState.progressFlow.value = if (result.isFocusSuccessful) {
+                    focusMeteringState.progressState.value = if (result.isFocusSuccessful) {
                         FocusMeteringProgress.Succeeded
                     } else {
                         FocusMeteringProgress.Failed
                     }
                 } catch (e: OperationCanceledException) {
-                    focusMeteringState.progressFlow.value = FocusMeteringProgress.Cancelled
+                    focusMeteringState.progressState.value = FocusMeteringProgress.Cancelled
                 }
             }
         }

@@ -1,12 +1,13 @@
 package com.github.skgmn.cameraxx
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 class FocusMeteringState {
-    internal val progressFlow = MutableStateFlow(FocusMeteringProgress.Idle)
+    internal val progressState = mutableStateOf(FocusMeteringProgress.Idle)
 
-    val meteringParameters = MutableStateFlow(FocusMeteringParameters())
-    val meteringPoints = MutableStateFlow<MeteringPoints>(TapMeteringPoints())
-    val progress: StateFlow<FocusMeteringProgress> get() = progressFlow
+    var meteringParameters by mutableStateOf(FocusMeteringParameters())
+    var meteringPoints by mutableStateOf<MeteringPoints>(TapMeteringPoints())
+    val progress by progressState
 }
