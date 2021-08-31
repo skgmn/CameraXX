@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -147,23 +146,12 @@ fun CameraPreview(
 
         val requestMeteringParameters by focusMeteringState.meteringParameters.collectAsState()
         val requestMeteringPoints by focusMeteringState.meteringPoints.collectAsState()
-        var tapPosition by remember { mutableStateOf<Offset?>(null) }
-        val meteringPoints by if (requestMeteringPoints === FocusMeteringState.TapPoint) {
-            remember(tapPosition) {
-                derivedStateOf {
-                    val tap = tapPosition ?: return@derivedStateOf emptyList()
-                    listOf(pointFactory.createPoint(tap.x, tap.y))
+        val meteringPoints by remember(requestMeteringPoints) {
+            requestMeteringPoints.getOffsets()
+                .map { list ->
+                    list.map { pointFactory.createPoint(it.x, it.y) }
                 }
-            }
-        } else {
-            remember(requestMeteringPoints) {
-                derivedStateOf {
-                    requestMeteringPoints.map {
-                        pointFactory.createPoint(it.x, it.y)
-                    }
-                }
-            }
-        }
+        }.collectAsState(emptyList())
         val focusMeteringAction by remember(requestMeteringParameters, meteringPoints) {
             derivedStateOf {
                 if (meteringPoints.isEmpty()) return@derivedStateOf null
@@ -204,9 +192,11 @@ fun CameraPreview(
             }
         }
 
-        if (requestMeteringPoints === FocusMeteringState.TapPoint) {
+        (requestMeteringPoints as? TapMeteringPoints)?.let { points ->
             m = m.pointerInput(Unit) {
-                detectTapGestures(onTap = { tapPosition = it })
+                detectTapGestures(onTap = {
+                    points.tapOffsetFlow.value = it
+                })
             }
         }
     }
