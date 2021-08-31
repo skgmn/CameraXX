@@ -113,40 +113,34 @@ fun CameraPreview(
         }
     }
 
-    // Torch states
-    val cameraTorchStateFlow by remember(camera, torchState) {
-        derivedStateOf {
-            if (torchState != null) {
-                camera?.cameraInfo?.getTorchState()
-            } else {
-                null
+    run torch@{
+        torchState ?: return@torch
+        val cam = camera ?: return@torch
+
+        val cameraTorchOn by remember {
+            cam.cameraInfo.getTorchState()
+                .map { it == androidx.camera.core.TorchState.ON }
+        }.collectAsState(null)
+        val requestTorchOn by remember {
+            torchState.isOnFlow
+                .filter { it?.fromCamera == false }
+                .map { it?.value }
+        }.collectAsState(null)
+
+        LaunchedEffect(torchState, cam) {
+            torchState.hasFlashUnitFlow.value = cam.cameraInfo.hasFlashUnit
+        }
+        LaunchedEffect(torchState, cameraTorchOn) {
+            val on = cameraTorchOn ?: return@LaunchedEffect
+            if (torchState.isOnFlow.value == null) {
+                torchState.isOnFlow.compareAndSet(null, CameraAttribute(on, true))
             }
         }
-    }
-    val cameraTorchState by (cameraTorchStateFlow ?: flowOf(null)).collectAsState(null)
-    val cameraTorchOn by remember(cameraTorchState) {
-        derivedStateOf { cameraTorchState == androidx.camera.core.TorchState.ON }
-    }
-    val requestTorchOn by (torchState?.isOnFlow
-        ?.filter { it?.fromCamera == false }
-        ?.map { it?.value }
-        ?: flowOf(null)).collectAsState(null)
-
-    // Side effects for torch
-    LaunchedEffect(torchState, camera) {
-        torchState?.hasFlashUnitFlow?.value = camera?.cameraInfo?.hasFlashUnit
-    }
-    LaunchedEffect(torchState, cameraTorchState) {
-        torchState ?: return@LaunchedEffect
-        val newOn = cameraTorchState == androidx.camera.core.TorchState.ON
-        if (torchState.isOnFlow.value == null) {
-            torchState.isOnFlow.compareAndSet(null, CameraAttribute(newOn, true))
-        }
-    }
-    LaunchedEffect(requestTorchOn, cameraTorchOn, camera) {
-        val newOn = requestTorchOn ?: return@LaunchedEffect
-        if (cameraTorchOn != newOn) {
-            camera?.cameraControl?.enableTorch(newOn)
+        LaunchedEffect(requestTorchOn, cameraTorchOn, cam) {
+            val on = requestTorchOn ?: return@LaunchedEffect
+            if (cameraTorchOn != on) {
+                cam.cameraControl.enableTorch(on)
+            }
         }
     }
 
