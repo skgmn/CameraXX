@@ -8,5 +8,5 @@ import kotlin.time.ExperimentalTime
 data class FocusMeteringParameters(
     val meteringMode: MeteringMode =
         MeteringMode.AutoFocus + MeteringMode.AutoExposure + MeteringMode.AutoWhiteBalance,
-    val autoCancelDuration: Duration? = Duration.seconds(5)
+    val autoCancelDurationMs: Long? = 5000L
 )

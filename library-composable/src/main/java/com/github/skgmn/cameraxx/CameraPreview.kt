@@ -1,8 +1,7 @@
 package com.github.skgmn.cameraxx
 
-import android.util.Log
 import androidx.camera.core.*
-import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraControl.OperationCanceledException
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -18,10 +17,7 @@ import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
-import kotlin.time.DurationUnit
-import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalTime::class)
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
@@ -173,20 +169,17 @@ fun CameraPreview(
                 if (meteringPoints.isEmpty()) return@derivedStateOf null
 
                 val meteringMode = requestMeteringParameters.meteringMode
-                val autoCancelDuration = requestMeteringParameters.autoCancelDuration
+                val autoCancelDurationMs = requestMeteringParameters.autoCancelDurationMs
                 var builder = FocusMeteringAction.Builder(meteringPoints[0], meteringMode.value)
                 if (meteringPoints.size > 1) {
                     for (i in 1 until meteringPoints.size) {
                         builder = builder.addPoint(meteringPoints[i], meteringMode.value)
                     }
                 }
-                builder = if (autoCancelDuration == null) {
+                builder = if (autoCancelDurationMs == null) {
                     builder.disableAutoCancel()
                 } else {
-                    builder.setAutoCancelDuration(
-                        autoCancelDuration.toLong(DurationUnit.MILLISECONDS),
-                        TimeUnit.MILLISECONDS
-                    )
+                    builder.setAutoCancelDuration(autoCancelDurationMs, TimeUnit.MILLISECONDS)
                 }
                 builder.build()
             }
@@ -205,7 +198,7 @@ fun CameraPreview(
                     } else {
                         FocusMeteringProgress.Failed
                     }
-                } catch (e: CameraControl.OperationCanceledException) {
+                } catch (e: OperationCanceledException) {
                     focusMeteringState.progressFlow.value = FocusMeteringProgress.Cancelled
                 }
             }
