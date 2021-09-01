@@ -27,13 +27,58 @@ fun CameraPreview(
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
     pinchZoomEnabled: Boolean = false,
-    zoomState: ZoomState? = if (pinchZoomEnabled) remember { ZoomState() } else null,
+    zoomState: ZoomState? = null,
     torchState: TorchState? = null,
-    focusMeteringState: FocusMeteringState? = null
+    focusMeteringState: FocusMeteringState? = null,
+    streamState: StreamState? = null
+) {
+    val implZoomState = zoomState ?: if (pinchZoomEnabled) remember { ZoomState() } else null
+    val implStreamState = streamState
+        ?: if (focusMeteringState != null) remember { StreamState() } else null
+    CameraPreviewImpl(
+        modifier,
+        cameraSelector,
+        preview,
+        imageCapture,
+        imageAnalysis,
+        scaleType,
+        implementationMode,
+        pinchZoomEnabled,
+        implZoomState,
+        torchState,
+        focusMeteringState,
+        implStreamState
+    )
+}
+
+@Composable
+private fun CameraPreviewImpl(
+    modifier: Modifier,
+    cameraSelector: CameraSelector,
+    preview: Preview?,
+    imageCapture: ImageCapture?,
+    imageAnalysis: ImageAnalysis?,
+    scaleType: PreviewView.ScaleType,
+    implementationMode: PreviewView.ImplementationMode,
+    pinchZoomEnabled: Boolean,
+    zoomState: ZoomState?,
+    torchState: TorchState?,
+    focusMeteringState: FocusMeteringState?,
+    streamState: StreamState?
 ) {
     var m = modifier
     var camera by remember { mutableStateOf<Camera?>(null) }
     var meteringPointFactory by remember { mutableStateOf<MeteringPointFactory?>(null) }
+    var previewStreamStateFlow by remember { mutableStateOf<Flow<PreviewView.StreamState>?>(null) }
+
+    run previewStreamState@{
+        streamState ?: return@previewStreamState
+        LaunchedEffect(previewStreamStateFlow) {
+            previewStreamStateFlow?.collect {
+                streamState.isStreamingState.value = it == PreviewView.StreamState.STREAMING
+            }
+        }
+    }
 
     run zoom@{
         zoomState ?: return@zoom
@@ -133,6 +178,7 @@ fun CameraPreview(
 
     run focusMetering@{
         focusMeteringState ?: return@focusMetering
+        streamState ?: return@focusMetering
         val pointFactory = meteringPointFactory ?: return@focusMetering
         val cam = camera ?: return@focusMetering
 
@@ -148,6 +194,7 @@ fun CameraPreview(
         val focusMeteringAction by remember {
             derivedStateOf {
                 if (meteringPoints.isEmpty()) return@derivedStateOf null
+                if (!streamState.isStreaming) return@derivedStateOf null
 
                 val meteringMode = requestMeteringParameters.meteringMode
                 if (meteringMode == MeteringMode.None) return@derivedStateOf null
@@ -209,7 +256,10 @@ fun CameraPreview(
         scaleType,
         implementationMode,
         onCameraReceived = { camera = it },
-        onViewCreated = { meteringPointFactory = it.meteringPointFactory }
+        onViewCreated = {
+            meteringPointFactory = it.meteringPointFactory
+            previewStreamStateFlow = it.listenPreviewStreamState()
+        }
     )
 }
 

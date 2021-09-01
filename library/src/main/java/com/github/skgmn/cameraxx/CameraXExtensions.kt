@@ -30,6 +30,10 @@ suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
     return ProcessCameraProvider.getInstance(this).await(false)
 }
 
+fun PreviewView.listenPreviewStreamState(): Flow<PreviewView.StreamState> {
+    return previewStreamState.toFlow()
+}
+
 suspend fun ImageCapture.takePicture(): ImageProxy {
     return suspendCoroutine { cont ->
         takePicture(ImmediateExecutor(), object : ImageCapture.OnImageCapturedCallback() {
