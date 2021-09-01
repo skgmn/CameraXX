@@ -25,43 +25,10 @@ fun CameraPreview(
     imageAnalysis: ImageAnalysis? = null,
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
-    pinchZoomEnabled: Boolean = false,
     zoomState: ZoomState? = null,
     torchState: TorchState? = null,
     focusMeteringState: FocusMeteringState? = null,
-    streamState: PreviewStreamState? = null
-) {
-    val implZoomState = zoomState ?: if (pinchZoomEnabled) remember { ZoomState() } else null
-    CameraPreviewImpl(
-        modifier,
-        cameraSelector,
-        preview,
-        imageCapture,
-        imageAnalysis,
-        scaleType,
-        implementationMode,
-        pinchZoomEnabled,
-        implZoomState,
-        torchState,
-        focusMeteringState,
-        streamState
-    )
-}
-
-@Composable
-private fun CameraPreviewImpl(
-    modifier: Modifier,
-    cameraSelector: CameraSelector,
-    preview: Preview?,
-    imageCapture: ImageCapture?,
-    imageAnalysis: ImageAnalysis?,
-    scaleType: PreviewView.ScaleType,
-    implementationMode: PreviewView.ImplementationMode,
-    pinchZoomEnabled: Boolean,
-    zoomState: ZoomState?,
-    torchState: TorchState?,
-    focusMeteringState: FocusMeteringState?,
-    previewStreamState: PreviewStreamState?
+    previewStreamState: PreviewStreamState? = null
 ) {
     var m = modifier
     val cameraState = remember { mutableStateOf<Camera?>(null) }
@@ -71,7 +38,7 @@ private fun CameraPreviewImpl(
 
     run zoom@{
         Zoom(zoomState ?: return@zoom, cameraState)
-        if (pinchZoomEnabled) {
+        if (zoomState.pinchZoomEnabled) {
             m = m.pinchZoom(zoomState)
         }
     }

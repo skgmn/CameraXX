@@ -55,7 +55,7 @@ private fun CameraLayer(
     val preview by remember { mutableStateOf(mainViewModel.preview) }
     val imageCapture by mainViewModel.imageCaptureState.collectAsState()
 
-    val zoomState = remember { ZoomState() }
+    val zoomState = remember { ZoomState(pinchZoomEnabled = true) }
     val torchState = remember { TorchState() }
     val focusMeteringState = remember { FocusMeteringState() }
 
@@ -69,7 +69,6 @@ private fun CameraLayer(
             // Pass null to Preview so it can keep last preview frame while saving a photo
             preview = if (savingPhoto) null else preview,
             imageCapture = imageCapture,
-            pinchZoomEnabled = true,
             zoomState = zoomState,
             torchState = torchState,
             focusMeteringState = focusMeteringState
