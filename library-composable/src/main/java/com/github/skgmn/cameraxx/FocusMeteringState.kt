@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 class FocusMeteringState {
     internal val progressState = mutableStateOf(FocusMeteringProgress.Idle)
 
-    var meteringParameters by mutableStateOf(FocusMeteringParameters())
+    var parameters by mutableStateOf(FocusMeteringParameters())
     var meteringPoints by mutableStateOf<MeteringPoints>(TapMeteringPoints())
     val progress by progressState
 }

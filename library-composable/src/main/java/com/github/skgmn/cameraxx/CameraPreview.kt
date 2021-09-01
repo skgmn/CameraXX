@@ -136,7 +136,7 @@ fun CameraPreview(
         val pointFactory = meteringPointFactory ?: return@focusMetering
         val cam = camera ?: return@focusMetering
 
-        val requestMeteringParameters = focusMeteringState.meteringParameters
+        val requestMeteringParameters = focusMeteringState.parameters
         val requestMeteringPoints = focusMeteringState.meteringPoints
         val meteringPoints by remember {
             derivedStateOf {
