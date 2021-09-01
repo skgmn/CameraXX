@@ -4,6 +4,7 @@ import androidx.camera.core.Camera
 import androidx.camera.core.ExperimentalExposureCompensation
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.FocusMeteringResult
+import kotlinx.coroutines.guava.await
 
 class CameraControl internal constructor(private val camera: Camera) {
     suspend fun enableTorch(torch: Boolean) {
