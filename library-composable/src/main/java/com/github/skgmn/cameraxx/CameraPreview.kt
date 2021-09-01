@@ -33,8 +33,6 @@ fun CameraPreview(
     streamState: StreamState? = null
 ) {
     val implZoomState = zoomState ?: if (pinchZoomEnabled) remember { ZoomState() } else null
-    val implStreamState = streamState
-        ?: if (focusMeteringState != null) remember { StreamState() } else null
     CameraPreviewImpl(
         modifier,
         cameraSelector,
@@ -47,7 +45,7 @@ fun CameraPreview(
         implZoomState,
         torchState,
         focusMeteringState,
-        implStreamState
+        streamState
     )
 }
 
@@ -70,15 +68,6 @@ private fun CameraPreviewImpl(
     var camera by remember { mutableStateOf<Camera?>(null) }
     var meteringPointFactory by remember { mutableStateOf<MeteringPointFactory?>(null) }
     var previewStreamStateFlow by remember { mutableStateOf<Flow<PreviewView.StreamState>?>(null) }
-
-    run previewStreamState@{
-        streamState ?: return@previewStreamState
-        LaunchedEffect(previewStreamStateFlow) {
-            previewStreamStateFlow?.collect {
-                streamState.isStreamingState.value = it == PreviewView.StreamState.STREAMING
-            }
-        }
-    }
 
     run zoom@{
         zoomState ?: return@zoom
@@ -178,7 +167,6 @@ private fun CameraPreviewImpl(
 
     run focusMetering@{
         focusMeteringState ?: return@focusMetering
-        streamState ?: return@focusMetering
         val pointFactory = meteringPointFactory ?: return@focusMetering
         val cam = camera ?: return@focusMetering
 
@@ -194,7 +182,6 @@ private fun CameraPreviewImpl(
         val focusMeteringAction by remember {
             derivedStateOf {
                 if (meteringPoints.isEmpty()) return@derivedStateOf null
-                if (!streamState.isStreaming) return@derivedStateOf null
 
                 val meteringMode = requestMeteringParameters.meteringMode
                 if (meteringMode == MeteringMode.None) return@derivedStateOf null
@@ -234,6 +221,8 @@ private fun CameraPreviewImpl(
                     }
                 } catch (e: OperationCanceledException) {
                     focusMeteringState.progressState.value = FocusMeteringProgress.Cancelled
+                } catch (e: Throwable) {
+                    focusMeteringState.progressState.value = FocusMeteringProgress.Failed
                 }
             }
         }
@@ -243,6 +232,15 @@ private fun CameraPreviewImpl(
                 detectTapGestures(onTap = {
                     points.tapOffsetState.value = it
                 })
+            }
+        }
+    }
+
+    run previewStreamState@{
+        streamState ?: return@previewStreamState
+        LaunchedEffect(previewStreamStateFlow) {
+            previewStreamStateFlow?.collect {
+                streamState.isStreamingState.value = it == PreviewView.StreamState.STREAMING
             }
         }
     }
