@@ -13,7 +13,10 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.github.skgmn.cameraxx.*
+import com.github.skgmn.cameraxx.CameraPreview
+import com.github.skgmn.cameraxx.FocusMeteringState
+import com.github.skgmn.cameraxx.TorchState
+import com.github.skgmn.cameraxx.ZoomState
 import com.github.skgmn.startactivityx.PermissionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -71,14 +74,7 @@ private fun CameraLayer(
             torchState = torchState,
             focusMeteringState = focusMeteringState
         )
-        if (zoomState.pinchZoomInProgress && zoomState.ratio != null) {
-            Text(
-                text = "%.1fx".format(zoomState.ratio),
-                color = Color(0xffffffff),
-                fontSize = 36.sp,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        ZoomRatioText(zoomState)
         Button(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -87,18 +83,35 @@ private fun CameraLayer(
         ) {
             Text(text = stringResource(R.string.take_photo))
         }
-        if (torchState.hasFlashUnit == true) {
-            torchState.isOn?.let { isOn ->
-                Button(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset((-8).dp, 8.dp),
-                    onClick = { torchState.isOn = !isOn }
-                ) {
-                    Text(if (isOn) "Off" else "On")
-                }
+        TorchToggleButton(torchState)
+    }
+}
+
+@Composable
+private fun BoxScope.TorchToggleButton(torchState: TorchState) {
+    if (torchState.hasFlashUnit == true) {
+        torchState.isOn?.let { isOn ->
+            Button(
+                modifier = Modifier.Companion
+                    .align(Alignment.TopEnd)
+                    .offset((-8).dp, 8.dp),
+                onClick = { torchState.isOn = !isOn }
+            ) {
+                Text(if (isOn) "Off" else "On")
             }
         }
+    }
+}
+
+@Composable
+fun BoxScope.ZoomRatioText(zoomState: ZoomState) {
+    if (zoomState.pinchZoomInProgress && zoomState.ratio != null) {
+        Text(
+            text = "%.1fx".format(zoomState.ratio),
+            color = Color(0xffffffff),
+            fontSize = 36.sp,
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 
