@@ -138,13 +138,14 @@ fun CameraPreview(
 
         val requestMeteringParameters = focusMeteringState.meteringParameters
         val requestMeteringPoints = focusMeteringState.meteringPoints
-        val meteringPoints by remember(requestMeteringPoints) {
-            requestMeteringPoints.getOffsets()
-                .map { list ->
-                    list.map { pointFactory.createPoint(it.x, it.y) }
+        val meteringPoints by remember {
+            derivedStateOf {
+                requestMeteringPoints.getOffsetListState().value.map {
+                    pointFactory.createPoint(it.x, it.y)
                 }
-        }.collectAsState(emptyList())
-        val focusMeteringAction by remember(requestMeteringParameters, meteringPoints) {
+            }
+        }
+        val focusMeteringAction by remember {
             derivedStateOf {
                 if (meteringPoints.isEmpty()) return@derivedStateOf null
 
@@ -193,7 +194,7 @@ fun CameraPreview(
         (requestMeteringPoints as? TapMeteringPoints)?.let { points ->
             m = m.pointerInput(Unit) {
                 detectTapGestures(onTap = {
-                    points.tapOffsetFlow.value = it
+                    points.tapOffsetState.value = it
                 })
             }
         }

@@ -1,15 +1,20 @@
 package com.github.skgmn.cameraxx
 
+import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class ManualMeteringPoints(
-    val offsets: MutableStateFlow<List<Offset>>
+    initialOffsets: List<Offset>
 ) : MeteringPoints() {
-    constructor() : this(MutableStateFlow(emptyList()))
+    constructor() : this(emptyList())
 
-    override fun getOffsets(): Flow<List<Offset>> {
-        return offsets
+    private val offsetListState = mutableStateOf(initialOffsets)
+
+    var offsets by offsetListState
+
+    override fun getOffsetListState(): State<List<Offset>> {
+        return offsetListState
     }
 }
