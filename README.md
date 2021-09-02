@@ -4,7 +4,7 @@ GitHub Packages authorization is required to use this library. See [this](https:
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx:0.4.0"
+    implementation "com.github.skgmn:cameraxx:0.5.0"
 }
 ```
 
@@ -14,6 +14,7 @@ dependencies {
 
 ```kotlin
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider
+fun PreviewView.listenPreviewStreamState(): Flow<PreviewView.StreamState>
 suspend fun ImageCapture.takePicture(): ImageProxy
 suspend fun ImageCapture.takePicture(ImageCapture.OutputFileOptions): ImageCapture.OutputFileResults
 fun ImageAnalysis.analyze(): Flow<ImageProxy>
