@@ -2,7 +2,7 @@
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx-composable:0.4.0"
+    implementation "com.github.skgmn:cameraxx-composable:0.5.0"
 }
 ```
 
@@ -13,16 +13,17 @@ dependencies {
 ```kotlin
 @Composable
 fun CameraPreview(
-    modifier: Modifier,
-    cameraSelector: CameraSelector,
-    preview: Preview?,
-    imageCapture: ImageCapture?,
-    imageAnalysis: ImageAnalysis?,
-    scaleType: PreviewView.ScaleType,
-    implementationMode: PreviewView.ImplementationMode,
-    pinchZoomEnabled: Boolean,
-    zoomState: ZoomState?,
-    torchState: TorchState?
+    modifier: Modifier = Modifier,
+    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
+    preview: Preview? = remember { Preview.Builder().build() },
+    imageCapture: ImageCapture? = null,
+    imageAnalysis: ImageAnalysis? = null,
+    scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
+    implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
+    zoomState: ZoomState? = null,
+    torchState: TorchState? = null,
+    focusMeteringState: FocusMeteringState? = null,
+    previewStreamState: PreviewStreamState? = null
 )
 ```
 
@@ -30,25 +31,27 @@ Every parameter has each default values, so just pass only parameters needed.
 
 ## Zoom
 
-If you need just simple pinch zoom, just pass true to `pinchZoomEnabled`.
+### Pinch to zoom
 
-Otherwise refer to this example if you need more customized UI for zoom.
+```kotlin
+val zoomState by remember { ZoomState(pinchZoomEnabled = true) }
+
+CameraPreview(zoomState = zoomState)
+```
+
+You can enable/disable it by setting `zoomState.pinchZoomEnabled` at runtime.
+
+### Custom UI
 
 ```kotlin
 val zoomState by remember { ZoomState() }
-val zoomRatioRange by zoomState.ratioRange.collectAsState()
-val zoomRatio by zoomState.ratio.collectAsState()
 
-CameraPreview(
-    zoomState = zoomState
-)
-if (zoomRatio != null && zoomRatioRange != null) {
-    ZoomControl( // Just an example. Use your own controller UI.
-        ratio = zoomRatio,
-        ratioRange = zoomRatioRange,
-        onZoom = { ratio ->
-            zoomState.ratio.value = ratio.coerceIn(zoomRatioRange)
-        }
+CameraPreview(zoomState = zoomState)
+run {
+    Slider(
+        value = zoomState.ratio ?: return@run,
+        valueRange = zoomState.ratioRange ?: return@run,
+        onValueChange = { zoomState.ratio = it }
     )
 }
 ```
@@ -57,17 +60,49 @@ if (zoomRatio != null && zoomRatioRange != null) {
 
 ```kotlin
 val torchState by remember { TorchState() }
-val torchOn by torchState.isOn.collectAsState()
-val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
 
-CameraPreview(
-    torchState = torchState
-)
-if (hasFlashUnit == true && torchOn != null) {
-    Button(
-        onClick = { torchState.isOn.value = !torchOn }
-    ) {
-        Text("Torch " + if (torchOn) "off" else "on")
+CameraPreview(torchState = torchState)
+if (hasFlashUnit == true) {
+    run {
+        val on = torchState.isOn ?: return@run
+        Button(
+            onClick = { torchState.isOn = !on }
+        ) {
+            Text("Torch " + if (on) "off" else "on")
+        }
     }
 }
+```
+
+## Focus metering
+
+### Tap to focus
+
+```kotlin
+val focusMeteringState by remember { FocusMeteringState() }
+
+CameraPreview(focusMeteringState = focusMeteringState)
+```
+
+Providing `FocusMeteringState` with all default parameters will allow user to tap screen to focus on that area.
+If it is needed to show an indicator at tap location, use explicit `TapMeteringPoints` and get value from `TapMeteringPoints.tapOffset`
+
+```kotlin
+val meteringPoints by remember { TapMeteringPoints() }
+val focusMeteringState by remember { FocusMeteringState(meteringPoints = meteringPoints) }
+
+CameraPreview(focusMeteringState = focusMeteringState)
+// Show UI on meteringPoints.tapOffset
+```
+
+### Manually pass coordinates
+
+Use `ManualMeteringPoints`
+
+```kotlin
+val meteringPoints by remember { ManualMeteringPoints() }
+val focusMeteringState by remember { FocusMeteringState(meteringPoints = meteringPoints) }
+
+CameraPreview(focusMeteringState = focusMeteringState)
+// offer coordinates as List<Offset> to meteringPoints.offsets
 ```

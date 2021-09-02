@@ -7,15 +7,13 @@ import android.provider.MediaStore
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
-import androidx.camera.core.TorchState
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.skgmn.cameraxx.Camera
-import com.github.skgmn.cameraxx.CameraInfo
 import com.github.skgmn.cameraxx.takePicture
 import com.github.skgmn.viewmodelevent.publicEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -28,18 +26,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val permissionsInitiallyRequested = MutableStateFlow(false)
     val cameraPermissionsGranted = MutableStateFlow(false)
-    val pinchZoomInProgress = MutableStateFlow(false)
-    val zoomRatio = MutableStateFlow<Float?>(null)
-    val torchOn = MutableStateFlow<Boolean?>(null)
-    val cameraInfo = MutableStateFlow<CameraInfo?>(null)
-    val zoomRange = cameraInfo
-        .flatMapLatest { it?.getZoomState() ?: emptyFlow() }
-        .map { it.minZoomRatio..it.maxZoomRatio }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val requestCameraPermissionsByUserEvent = publicEvent<Any>()
     val requestTakePhotoPermissionsEvent = publicEvent<Any>()
     val showTakenPhotoEvent = publicEvent<Uri>()
+
+    private fun newImageCapture() = ImageCapture.Builder().build()
 
     fun requestCameraPermissions() {
         requestCameraPermissionsByUserEvent.post(Unit)
@@ -65,14 +57,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun replaceImageCapture() {
         _imageCaptureUseCase.value = newImageCapture()
     }
-
-    fun updateCameraInfo(cameraInfo: CameraInfo) {
-        this.cameraInfo.value = cameraInfo
-    }
-
-    fun toggleTorch() {
-        torchOn.value = !(torchOn.value ?: return)
-    }
-
-    private fun newImageCapture() = ImageCapture.Builder().build()
 }

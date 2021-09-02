@@ -2,7 +2,7 @@
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx-bindingadapter:0.4.0"
+    implementation "com.github.skgmn:cameraxx-bindingadapter:0.5.0"
 }
 ```
 
@@ -44,63 +44,21 @@ class MyViewModel : ViewModel() {
 </layout>
 ```
 
-## Zoom
+## Receive Camera instance
 
 ```kotlin
 class MyViewModel : ViewModel() {
-    val zoomRatio = MutableStateFlow<Float?>(null)
-    val cameraInfo = MutableStateFlow<CameraInfo?>(null)
+    private val cameraFlow = MutableStateFlow<Camera?>(null)
     
-    val zoomRange = cameraInfo
-        .flatMapLatest { it?.getZoomState() ?: emptyFlow() }
-        .map { it.minZoomRatio..it.maxZoomRatio }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-        
-    fun updateZoom(ratio: Float) {
-        zoomRatio.value = ratio.coerceIn(zoomRange ?: return)    
-    }
-    
-    fun zoomBy(scale: Float) {
-        zoomRatio.value = ((zoomRatio.value ?: return) * scale).coerceIn(zoomRange ?: return)
+    fun updateCamera(camera: Camera) {
+        cameraFlow.value = camera
     }
 }
 ```
-
 ```xml
-<layout>
-
-    <data>
-        <variable name="viewModel" type="MyViewModel" />
-    </data>
-
-    <androidx.camera.view.PreviewView
-        app:zoomRatio="@={viewModel.zoomRatio}"
-        app:onCameraInfoRetrieved="@{cameraInfo -> viewModel.updateCameraInfo(cameraInfo)}" />
-    
-</layout>
+<androidx.camera.view.PreviewView
+    app:onCameraRetrieved="@{camera -> viewModel.updateCamera(camera)}" />
 ```
 
-## Torch
-
-```kotlin
-class MyViewModel : ViewModel() {
-    val torchOn = MutableStateFlow<Float?>(null)
-    
-    fun toggleTorch() {
-        torchOn.value = !(torchOn.value ?: return)
-    }
-}
-```
-
-```xml
-<layout>
-
-    <data>
-        <variable name="viewModel" type="MyViewModel" />
-    </data>
-
-    <androidx.camera.view.PreviewView
-        app:torchOn="@={viewModel.torchOn}" />
-    
-</layout>
-```
+Once a `Camera` instance is received, you can get camera informations such as `ZoomState` or `TorchState` through `CameraInfo` or you can control camera by calling methods of `CameraControl`.
+You may have to use `mapLatest` or `flatMapLatest` to implement some camera features.

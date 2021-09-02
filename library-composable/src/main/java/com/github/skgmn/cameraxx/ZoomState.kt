@@ -1,16 +1,17 @@
 package com.github.skgmn.cameraxx
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
-class ZoomState {
-    internal val ratioRangeFlow = MutableStateFlow<ClosedRange<Float>?>(null)
-    internal val pinchZoomInProgressFlow = MutableStateFlow(false)
-    internal val ratioFlow = MutableStateFlow<CameraAttribute<Float>?>(null)
+class ZoomState(
+    pinchZoomEnabled: Boolean = false
+) {
+    internal val ratioRangeState = mutableStateOf<ClosedFloatingPointRange<Float>?>(null)
+    internal val pinchZoomInProgressState = mutableStateOf(false)
 
-    val ratioRange: StateFlow<ClosedRange<Float>?>
-        get() = ratioRangeFlow
-    val ratio: MutableStateFlow<Float?> = CameraAttributeStateFlow(ratioFlow)
-    val pinchZoomInProgress: StateFlow<Boolean>
-        get() = pinchZoomInProgressFlow
+    val ratioRange by ratioRangeState
+    var ratio by mutableStateOf<Float?>(null)
+    var pinchZoomEnabled by mutableStateOf(pinchZoomEnabled)
+    val pinchZoomInProgress by pinchZoomInProgressState
 }

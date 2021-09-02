@@ -2,6 +2,7 @@ package com.github.skgmn.cameraxx
 
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -12,10 +13,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun CameraPreview(
@@ -26,117 +25,42 @@ fun CameraPreview(
     imageAnalysis: ImageAnalysis? = null,
     scaleType: PreviewView.ScaleType = PreviewView.ScaleType.FILL_CENTER,
     implementationMode: PreviewView.ImplementationMode = PreviewView.ImplementationMode.PERFORMANCE,
-    pinchZoomEnabled: Boolean = false,
-    zoomState: ZoomState? = if (pinchZoomEnabled) remember { ZoomState() } else null,
-    torchState: TorchState? = null
+    zoomState: ZoomState? = null,
+    torchState: TorchState? = null,
+    focusMeteringState: FocusMeteringState? = null,
+    previewStreamState: PreviewStreamState? = null
 ) {
-    var camera by remember<MutableState<StableCamera?>> { mutableStateOf(null) }
-
-    // Zoom states
-    val cameraZoomStateFlow by remember(camera, pinchZoomEnabled, zoomState) {
-        derivedStateOf {
-            if (pinchZoomEnabled || zoomState != null) {
-                camera?.cameraInfo?.getZoomState()
-            } else {
-                null
-            }
-        }
-    }
-    val cameraZoomState by (cameraZoomStateFlow ?: flowOf(null)).collectAsState(null)
-    val cameraZoomRatio by remember(cameraZoomState) {
-        derivedStateOf { cameraZoomState?.zoomRatio }
-    }
-    val requestZoomRatio by (zoomState?.ratioFlow
-        ?.filter { it?.fromCamera == false }
-        ?.map { it?.value }
-        ?: MutableStateFlow(null)).collectAsState(null)
-
-    // Torch states
-    val cameraTorchStateFlow by remember(camera, torchState) {
-        derivedStateOf {
-            if (torchState != null) {
-                camera?.cameraInfo?.getTorchState()
-            } else {
-                null
-            }
-        }
-    }
-    val cameraTorchState by (cameraTorchStateFlow ?: flowOf(null)).collectAsState(null)
-    val cameraTorchOn by remember(cameraTorchState) {
-        derivedStateOf { cameraTorchState == androidx.camera.core.TorchState.ON }
-    }
-    val requestTorchOn by (torchState?.isOnFlow
-        ?.filter { it?.fromCamera == false }
-        ?.map { it?.value }
-        ?: flowOf(null)).collectAsState(null)
-
-    // Side effects for zoom
-    LaunchedEffect(zoomState, cameraZoomState) {
-        zoomState ?: return@LaunchedEffect
-        val camZoomState = cameraZoomState ?: return@LaunchedEffect
-        zoomState.ratioRangeFlow.value = camZoomState.run { minZoomRatio..maxZoomRatio }
-        if (zoomState.ratioFlow.value == null) {
-            zoomState.ratioFlow.compareAndSet(null, CameraAttribute(camZoomState.zoomRatio, true))
-        }
-    }
-    LaunchedEffect(requestZoomRatio, cameraZoomRatio, camera) {
-        val newRatio = requestZoomRatio ?: return@LaunchedEffect
-        if (cameraZoomRatio != newRatio) {
-            camera?.cameraControl?.setZoomRatio(newRatio)
-        }
-    }
-
-    // Side effects for torch
-    LaunchedEffect(torchState, camera) {
-        torchState?.hasFlashUnitFlow?.value = camera?.cameraInfo?.hasFlashUnit
-    }
-    LaunchedEffect(torchState, cameraTorchState) {
-        torchState ?: return@LaunchedEffect
-        val newOn = cameraTorchState == androidx.camera.core.TorchState.ON
-        if (torchState.isOnFlow.value == null) {
-            torchState.isOnFlow.compareAndSet(null, CameraAttribute(newOn, true))
-        }
-    }
-    LaunchedEffect(requestTorchOn, cameraTorchOn, camera) {
-        val newOn = requestTorchOn ?: return@LaunchedEffect
-        if (cameraTorchOn != newOn) {
-            camera?.cameraControl?.enableTorch(newOn)
-        }
-    }
-
     var m = modifier
-    if (pinchZoomEnabled) {
-        m = m.pointerInput(Unit) {
-            coroutineScope {
-                launch {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            val pressed = event.changes.any { it.pressed }
-                            if (!pressed) {
-                                zoomState?.pinchZoomInProgressFlow?.value = false
-                            }
-                        }
-                    }
-                }
-                launch {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        if (zoom == 1f) return@detectTransformGestures
-                        val camRatio = cameraZoomRatio ?: return@detectTransformGestures
-                        val minRatio =
-                            cameraZoomState?.minZoomRatio ?: return@detectTransformGestures
-                        val maxRatio =
-                            cameraZoomState?.maxZoomRatio ?: return@detectTransformGestures
+    val cameraState = remember { mutableStateOf<Camera?>(null) }
+    val meteringPointFactoryState = remember { mutableStateOf<MeteringPointFactory?>(null) }
+    val previewStreamStateFlowState =
+        remember { mutableStateOf<Flow<PreviewView.StreamState>?>(null) }
 
-                        zoomState?.pinchZoomInProgressFlow?.value = true
-                        val newRatio = (camRatio * zoom).coerceIn(minRatio, maxRatio)
-                        if (camRatio != newRatio) {
-                            zoomState?.ratio?.value = newRatio
-                        }
-                    }
-                }
-            }
+    run zoom@{
+        Zoom(zoomState ?: return@zoom, cameraState)
+        if (zoomState.pinchZoomEnabled) {
+            m = m.pinchZoom(zoomState)
         }
+    }
+
+    run torch@{
+        Torch(torchState ?: return@torch, cameraState)
+    }
+
+    run focusMetering@{
+        FocusMetering(
+            focusMeteringState ?: return@focusMetering,
+            cameraState,
+            meteringPointFactoryState
+        )
+        m = m.tapMetering(focusMeteringState)
+    }
+
+    run previewStreamState@{
+        PreviewStream(
+            previewStreamState ?: return@previewStreamState,
+            previewStreamStateFlowState
+        )
     }
 
     AndroidPreviewView(
@@ -146,8 +70,201 @@ fun CameraPreview(
         imageCapture,
         imageAnalysis,
         scaleType,
-        implementationMode
-    ) { camera = it }
+        implementationMode,
+        cameraState,
+        onViewCreated = {
+            meteringPointFactoryState.value = it.meteringPointFactory
+            previewStreamStateFlowState.value = it.listenPreviewStreamState()
+        }
+    )
+}
+
+@Composable
+private fun Zoom(
+    zoomState: ZoomState,
+    cameraState: State<Camera?>
+) {
+    val cam = cameraState.value ?: return
+
+    val cameraZoomState by remember(cam) {
+        cam.cameraInfo.getZoomState()
+            .distinctUntilChanged { old, new ->
+                old.minZoomRatio == new.minZoomRatio &&
+                        old.maxZoomRatio == new.maxZoomRatio &&
+                        old.zoomRatio == new.zoomRatio
+            }
+    }.collectAsState(null)
+    val cameraZoomRatio by remember { derivedStateOf { cameraZoomState?.zoomRatio } }
+    val cameraRatioRange by remember {
+        derivedStateOf { cameraZoomState?.run { minZoomRatio..maxZoomRatio } }
+    }
+
+    LaunchedEffect(zoomState, cameraRatioRange) {
+        zoomState.ratioRangeState.value = cameraRatioRange ?: return@LaunchedEffect
+    }
+    if (zoomState.ratio == null) {
+        LaunchedEffect(zoomState, cameraZoomRatio) {
+            if (zoomState.ratio == null && cameraZoomRatio != null) {
+                zoomState.ratio = cameraZoomRatio
+            }
+        }
+    }
+    LaunchedEffect(zoomState.ratio, cameraZoomRatio, cam) {
+        val newRatio = zoomState.ratio ?: return@LaunchedEffect
+        if (cameraZoomRatio != newRatio) {
+            cam.cameraControl.setZoomRatio(newRatio)
+        }
+    }
+}
+
+@Composable
+fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
+    val cam = cameraState.value ?: return
+
+    val cameraTorchOn by remember {
+        cam.cameraInfo.getTorchState()
+            .map { it == androidx.camera.core.TorchState.ON }
+    }.collectAsState(null)
+    val requestTorchOn by remember { derivedStateOf { torchState.isOn } }
+
+    LaunchedEffect(torchState, cam) {
+        torchState.hasFlashUnitState.value = cam.cameraInfo.hasFlashUnit
+    }
+    if (requestTorchOn == null) {
+        LaunchedEffect(torchState, cameraTorchOn) {
+            val on = cameraTorchOn ?: return@LaunchedEffect
+            if (torchState.isOnState.value == null) {
+                torchState.isOnState.value = on
+            }
+        }
+    }
+    LaunchedEffect(requestTorchOn, cameraTorchOn, cam) {
+        val on = requestTorchOn ?: return@LaunchedEffect
+        if (cameraTorchOn != on) {
+            cam.cameraControl.enableTorch(on)
+        }
+    }
+}
+
+@Composable
+fun FocusMetering(
+    focusMeteringState: FocusMeteringState,
+    cameraState: State<Camera?>,
+    meteringPointFactoryState: MutableState<MeteringPointFactory?>
+) {
+    val cam = cameraState.value ?: return
+    val meteringPointFactory = meteringPointFactoryState.value ?: return
+
+    val requestMeteringParameters = focusMeteringState.parameters
+    val requestMeteringPoints = focusMeteringState.meteringPoints
+    val meteringPoints by remember {
+        derivedStateOf {
+            requestMeteringPoints.getOffsetListState().value.map {
+                meteringPointFactory.createPoint(it.x, it.y)
+            }
+        }
+    }
+    val focusMeteringAction by remember {
+        derivedStateOf {
+            if (meteringPoints.isEmpty()) return@derivedStateOf null
+
+            val meteringMode = requestMeteringParameters.meteringMode
+            if (meteringMode == MeteringMode.None) return@derivedStateOf null
+
+            val autoCancelDurationMs = requestMeteringParameters.autoCancelDurationMs
+            var builder = FocusMeteringAction.Builder(meteringPoints[0], meteringMode.value)
+            if (meteringPoints.size > 1) {
+                for (i in 1 until meteringPoints.size) {
+                    builder = builder.addPoint(meteringPoints[i], meteringMode.value)
+                }
+            }
+            builder = if (autoCancelDurationMs == null) {
+                builder.disableAutoCancel()
+            } else {
+                builder.setAutoCancelDuration(autoCancelDurationMs, TimeUnit.MILLISECONDS)
+            }
+            builder.build()
+        }
+    }
+    LaunchedEffect(focusMeteringAction, cam) {
+        if (focusMeteringState.progressState.value == FocusMeteringProgress.InProgress) {
+            focusMeteringState.progressState.value = FocusMeteringProgress.Cancelled
+        }
+        try {
+            cam.cameraControl.cancelFocusAndMetering()
+        } catch (e: androidx.camera.core.CameraControl.OperationCanceledException) {
+            // Camera is not active. Ignore it.
+        }
+        focusMeteringAction?.let {
+            try {
+                focusMeteringState.progressState.value = FocusMeteringProgress.InProgress
+                val result = cam.cameraControl.startFocusAndMetering(it)
+                focusMeteringState.progressState.value = if (result.isFocusSuccessful) {
+                    FocusMeteringProgress.Succeeded
+                } else {
+                    FocusMeteringProgress.Failed
+                }
+            } catch (e: androidx.camera.core.CameraControl.OperationCanceledException) {
+                focusMeteringState.progressState.value = FocusMeteringProgress.Cancelled
+            } catch (e: Throwable) {
+                focusMeteringState.progressState.value = FocusMeteringProgress.Failed
+            }
+        }
+    }
+}
+
+@Composable
+fun PreviewStream(
+    previewStreamState: PreviewStreamState,
+    previewStreamStateFlowState: MutableState<Flow<PreviewView.StreamState>?>
+) {
+    val previewStreamStateFlow by previewStreamStateFlowState
+    LaunchedEffect(previewStreamStateFlow) {
+        previewStreamStateFlow?.collect {
+            previewStreamState.isStreamingState.value = it == PreviewView.StreamState.STREAMING
+        }
+    }
+}
+
+private fun Modifier.pinchZoom(zoomState: ZoomState): Modifier {
+    return pointerInput(Unit) {
+        coroutineScope {
+            launch {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val pressed = event.changes.any { it.pressed }
+                        if (!pressed) {
+                            zoomState.pinchZoomInProgressState.value = false
+                        }
+                    }
+                }
+            }
+            launch {
+                detectTransformGestures { _, _, zoom, _ ->
+                    if (zoom == 1f) return@detectTransformGestures
+                    val currentRatio = zoomState.ratio ?: return@detectTransformGestures
+                    val range = zoomState.ratioRange ?: return@detectTransformGestures
+
+                    zoomState.pinchZoomInProgressState.value = true
+                    val newRatio = (currentRatio * zoom).coerceIn(range)
+                    if (currentRatio != newRatio) {
+                        zoomState.ratio = newRatio
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Modifier.tapMetering(focusMeteringState: FocusMeteringState): Modifier {
+    return (focusMeteringState.meteringPoints as? TapMeteringPoints)?.let { points ->
+        pointerInput(Unit) {
+            detectTapGestures(onTap = {
+                points.tapOffsetState.value = it
+            })
+        }
+    } ?: this
 }
 
 @Composable
@@ -159,16 +276,19 @@ private fun AndroidPreviewView(
     imageAnalysis: ImageAnalysis?,
     scaleType: PreviewView.ScaleType,
     implementationMode: PreviewView.ImplementationMode,
-    onCameraReceived: (StableCamera) -> Unit
+    cameraOutput: MutableState<in Camera>,
+    onViewCreated: (PreviewView) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val lifecycleOwner by rememberUpdatedState(LocalLifecycleOwner.current)
+    val lifecycleOwner = LocalLifecycleOwner.current
     val bindings = remember { PreviewViewBindings() }
 
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            PreviewView(context)
+            PreviewView(context).also {
+                onViewCreated(it)
+            }
         },
         update = { view ->
             if (view.scaleType != scaleType) {
@@ -210,14 +330,14 @@ private fun AndroidPreviewView(
                         cameraProvider.unbind(*oldUseCases.toTypedArray())
                     }
                     if (newUseCases.isNotEmpty()) {
-                        val camera = StableCamera(
+                        val camera = Camera(
                             cameraProvider.bindToLifecycle(
                                 lifecycleOwner,
                                 cameraSelector,
                                 *newUseCases.toTypedArray()
                             )
                         )
-                        onCameraReceived(camera)
+                        cameraOutput.value = camera
                     }
 
                     if (bindings.preview !== preview) {
@@ -244,6 +364,3 @@ private class PreviewViewBindings {
     var imageCapture: ImageCapture? = null
     var imageAnalysis: ImageAnalysis? = null
 }
-
-@Stable
-private class StableCamera(camera: androidx.camera.core.Camera) : Camera(camera)

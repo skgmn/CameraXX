@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.skgmn.cameraxx.CameraPreview
+import com.github.skgmn.cameraxx.FocusMeteringState
 import com.github.skgmn.cameraxx.TorchState
 import com.github.skgmn.cameraxx.ZoomState
 import com.github.skgmn.startactivityx.PermissionStatus
@@ -54,13 +55,9 @@ private fun CameraLayer(
     val preview by remember { mutableStateOf(mainViewModel.preview) }
     val imageCapture by mainViewModel.imageCaptureState.collectAsState()
 
-    val zoomState = remember { ZoomState() }
-    val pinchZoomInProgress by zoomState.pinchZoomInProgress.collectAsState()
-    val zoomRatio by zoomState.ratio.collectAsState()
-
+    val zoomState = remember { ZoomState(pinchZoomEnabled = true) }
     val torchState = remember { TorchState() }
-    val hasFlashUnit by torchState.hasFlashUnit.collectAsState()
-    val torchOn by torchState.isOn.collectAsState()
+    val focusMeteringState = remember { FocusMeteringState() }
 
     Box(
         modifier = Modifier
@@ -72,18 +69,11 @@ private fun CameraLayer(
             // Pass null to Preview so it can keep last preview frame while saving a photo
             preview = if (savingPhoto) null else preview,
             imageCapture = imageCapture,
-            pinchZoomEnabled = true,
             zoomState = zoomState,
-            torchState = torchState
+            torchState = torchState,
+            focusMeteringState = focusMeteringState
         )
-        if (pinchZoomInProgress && zoomRatio != null) {
-            Text(
-                text = "%.1fx".format(zoomRatio),
-                color = Color(0xffffffff),
-                fontSize = 36.sp,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
+        ZoomRatioText(zoomState)
         Button(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -92,18 +82,35 @@ private fun CameraLayer(
         ) {
             Text(text = stringResource(R.string.take_photo))
         }
-        if (hasFlashUnit == true) {
-            torchOn?.let { isOn ->
-                Button(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset((-8).dp, 8.dp),
-                    onClick = { torchState.isOn.value = !isOn }
-                ) {
-                    Text(if (isOn) "Off" else "On")
-                }
+        TorchToggleButton(torchState)
+    }
+}
+
+@Composable
+private fun BoxScope.TorchToggleButton(torchState: TorchState) {
+    if (torchState.hasFlashUnit == true) {
+        torchState.isOn?.let { isOn ->
+            Button(
+                modifier = Modifier.Companion
+                    .align(Alignment.TopEnd)
+                    .offset((-8).dp, 8.dp),
+                onClick = { torchState.isOn = !isOn }
+            ) {
+                Text(if (isOn) "Off" else "On")
             }
         }
+    }
+}
+
+@Composable
+fun BoxScope.ZoomRatioText(zoomState: ZoomState) {
+    if (zoomState.pinchZoomInProgress && zoomState.ratio != null) {
+        Text(
+            text = "%.1fx".format(zoomState.ratio),
+            color = Color(0xffffffff),
+            fontSize = 36.sp,
+            modifier = Modifier.align(Alignment.Center)
+        )
     }
 }
 

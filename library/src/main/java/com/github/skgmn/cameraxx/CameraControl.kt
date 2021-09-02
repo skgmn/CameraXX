@@ -2,10 +2,21 @@ package com.github.skgmn.cameraxx
 
 import androidx.camera.core.Camera
 import androidx.camera.core.ExperimentalExposureCompensation
+import androidx.camera.core.FocusMeteringAction
+import androidx.camera.core.FocusMeteringResult
+import kotlinx.coroutines.guava.await
 
 class CameraControl internal constructor(private val camera: Camera) {
     suspend fun enableTorch(torch: Boolean) {
         camera.cameraControl.enableTorch(torch).await()
+    }
+
+    suspend fun startFocusAndMetering(action: FocusMeteringAction): FocusMeteringResult {
+        return camera.cameraControl.startFocusAndMetering(action).await()
+    }
+
+    suspend fun cancelFocusAndMetering() {
+        camera.cameraControl.cancelFocusAndMetering().await()
     }
 
     @ExperimentalExposureCompensation
