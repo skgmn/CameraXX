@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 class ZoomState(
     pinchZoomEnabled: Boolean = false
 ) {
-    internal val ratioRangeState = mutableStateOf<ClosedRange<Float>?>(null)
+    internal val ratioRangeState = mutableStateOf<ClosedFloatingPointRange<Float>?>(null)
     internal val pinchZoomInProgressState = mutableStateOf(false)
 
     val ratioRange by ratioRangeState
