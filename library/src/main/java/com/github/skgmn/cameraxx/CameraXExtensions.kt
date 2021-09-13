@@ -1,10 +1,7 @@
 package com.github.skgmn.cameraxx
 
 import android.content.Context
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import com.google.common.util.concurrent.Futures
@@ -14,7 +11,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.guava.await
-import java.lang.ref.WeakReference
+import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -67,17 +64,20 @@ suspend fun ImageCapture.takePicture(
 @OptIn(ExperimentalCoroutinesApi::class)
 fun ImageAnalysis.analyze(): Flow<ImageProxy> {
     return callbackFlow {
-        val imageProxies = mutableListOf<WeakReference<ImageProxy>>()
+        val imageProxies = Collections.newSetFromMap(WeakHashMap<ImageProxy, Boolean>())
         setAnalyzer(MoreExecutors.directExecutor(), { imageProxy ->
-            if (trySend(imageProxy).isSuccess) {
-                imageProxies.removeAll { it.get() == null }
-                imageProxies += WeakReference(imageProxy)
-            } else {
-                imageProxy.close()
+            val imageProxyWrapper = ImageProxyWrapper.wrap(imageProxy)
+            imageProxies += imageProxyWrapper
+            ImageProxyWrapper.addOnCloseListener(imageProxyWrapper) {
+                imageProxies -= imageProxyWrapper
+            }
+            if (!trySend(imageProxyWrapper).isSuccess) {
+                imageProxies -= imageProxyWrapper
+                imageProxyWrapper.close()
             }
         })
         awaitClose {
-            imageProxies.forEach { it.get()?.close() }
+            imageProxies.forEach { it.close() }
             imageProxies.clear()
             clearAnalyzer()
         }
