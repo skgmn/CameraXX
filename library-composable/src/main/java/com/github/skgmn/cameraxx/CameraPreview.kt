@@ -141,7 +141,7 @@ private fun Zoom(
 }
 
 @Composable
-fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
+private fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
     val cam = cameraState.value ?: return
 
     val cameraTorchOn by remember {
@@ -170,7 +170,7 @@ fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
 }
 
 @Composable
-fun FocusMetering(
+private fun FocusMetering(
     focusMeteringState: FocusMeteringState,
     cameraState: State<Camera?>,
     meteringPointFactoryState: MutableState<MeteringPointFactory?>
@@ -237,7 +237,7 @@ fun FocusMetering(
 }
 
 @Composable
-fun PreviewStream(
+private fun PreviewStream(
     previewStreamState: PreviewStreamState,
     previewStreamStateFlowState: MutableState<Flow<PreviewView.StreamState>?>
 ) {
