@@ -10,22 +10,32 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.guava.await
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
+/**
+ * Get a singleton [ProcessCameraProvider].
+ */
 @Suppress("UnstableApiUsage")
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
     val future = ProcessCameraProvider.getInstance(this)
     return Futures.nonCancellationPropagating(future).await()
 }
 
+/**
+ * Listen to [PreviewView.StreamState] of this [PreviewView].
+ */
 fun PreviewView.listenPreviewStreamState(): Flow<PreviewView.StreamState> {
     return previewStreamState.toFlow()
 }
 
+/**
+ * Take a picture and get a [ImageProxy] instance.
+ */
 suspend fun ImageCapture.takePicture(): ImageProxy {
     return suspendCoroutine { cont ->
         takePicture(
@@ -42,6 +52,9 @@ suspend fun ImageCapture.takePicture(): ImageProxy {
     }
 }
 
+/**
+ * Take a picture and save it to a file.
+ */
 suspend fun ImageCapture.takePicture(
     outputFileOptions: ImageCapture.OutputFileOptions
 ): ImageCapture.OutputFileResults {
@@ -61,6 +74,16 @@ suspend fun ImageCapture.takePicture(
     }
 }
 
+/**
+ * Analyze each camera frames.
+ *
+ * Note that the [Flow] returned here can be collected at most once simultaneously,
+ * because [ImageAnalysis] supports only one callback.
+ * Caller may use [shareIn] to receive [ImageProxy] at multiple collectors.
+ *
+ * It's also caller's reponsibility to close delivered [ImageProxy].
+ * However, [ImageProxy] which are undelivered will be automatically closed.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 fun ImageAnalysis.analyze(): Flow<ImageProxy> {
     return callbackFlow {
