@@ -16,6 +16,29 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
 
+/**
+ * Composes camera preview using [PreviewView].
+ *
+ * @param modifier The modifier to be applied to the layout.
+ * @param cameraSelector [CameraSelector] to be used. It uses back camera by default.
+ * @param preview A [Preview] instance to be used. A default [Preview] instance is used if it's not
+ *  given. Can be null to stop/pause preview.
+ * @param imageCapture A [ImageCapture] instance when taking picture is needed.
+ * @param imageAnalysis A [ImageAnalysis] instance when analyzing camera frame is needed.
+ * @param scaleType Options for scaling the preview. Default value is
+ *  [PreviewView.ScaleType.FILL_CENTER].
+ * @param implementationMode When it is [PreviewView.ImplementationMode.PERFORMANCE],
+ *  [android.view.SurfaceView] is used internally. Otherwise [android.view.TextureView] is used.
+ *  Default value is [PreviewView.ImplementationMode.PERFORMANCE].
+ * @param zoomState Create a new instance of [ZoomState] with [remember] and pass it when it needs
+ *  camera zoom.
+ * @param torchState Create a new instance of [TorchState] with [remember] and pass it when it needs
+ *  to turn on/off camera torch.
+ * @param focusMeteringState Create a new instance of [FocusMeteringState] with [remember] and pass
+ *  it when it needs focus and metering.
+ * @param previewStreamState Create a new instance of [PreviewStreamState] with [remember] and pass
+ *  it when it needs to know streaming state of preview.
+ */
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
@@ -118,7 +141,7 @@ private fun Zoom(
 }
 
 @Composable
-fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
+private fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
     val cam = cameraState.value ?: return
 
     val cameraTorchOn by remember {
@@ -147,7 +170,7 @@ fun Torch(torchState: TorchState, cameraState: State<Camera?>) {
 }
 
 @Composable
-fun FocusMetering(
+private fun FocusMetering(
     focusMeteringState: FocusMeteringState,
     cameraState: State<Camera?>,
     meteringPointFactoryState: MutableState<MeteringPointFactory?>
@@ -214,7 +237,7 @@ fun FocusMetering(
 }
 
 @Composable
-fun PreviewStream(
+private fun PreviewStream(
     previewStreamState: PreviewStreamState,
     previewStreamStateFlowState: MutableState<Flow<PreviewView.StreamState>?>
 ) {

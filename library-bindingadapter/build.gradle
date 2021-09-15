@@ -42,25 +42,4 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.3.1"
 }
 
-afterEvaluate {
-    publishing {
-        repositories {
-            maven {
-                url "https://maven.pkg.github.com/$GITHUB_ID/CameraXX"
-                credentials {
-                    username GITHUB_ID
-                    password GITHUB_PACKAGES_TOKEN
-                }
-            }
-        }
-        publications {
-            release(MavenPublication) {
-                from components.release
-
-                groupId = 'com.github.skgmn'
-                artifactId = 'cameraxx-bindingadapter'
-                version = libraryVersion
-            }
-        }
-    }
-}
+apply from: "publish.gradle"

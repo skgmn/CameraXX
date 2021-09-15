@@ -12,6 +12,9 @@ class ManualMeteringPoints(
 
     private val offsetListState = mutableStateOf(initialOffsets)
 
+    /**
+     * Offsets to focus on. They are [CameraPreview]'s layout coordinates.
+     */
     var offsets by offsetListState
 
     override fun getOffsetListState(): State<List<Offset>> {

@@ -6,23 +6,47 @@ import androidx.camera.core.ExposureState
 import androidx.camera.core.ZoomState
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * A wrapper class of [androidx.camera.core.CameraInfo] to use methods as
+ * coroutines and flows.
+ */
 class CameraInfo internal constructor(private val camera: Camera) {
+    /**
+     * @see [androidx.camera.core.CameraInfo.getSensorRotationDegrees]
+     */
     val sensorRotationDegrees: Int
         get() = camera.cameraInfo.sensorRotationDegrees
+
+    /**
+     * @see [androidx.camera.core.CameraInfo.hasFlashUnit]
+     */
     val hasFlashUnit: Boolean
         get() = camera.cameraInfo.hasFlashUnit()
+
+    /**
+     * @see [androidx.camera.core.CameraInfo.getExposureState]
+     */
     val exposureState: ExposureState
         @ExperimentalExposureCompensation
         get() = camera.cameraInfo.exposureState
 
+    /**
+     * @see [androidx.camera.core.CameraInfo.getSensorRotationDegrees]
+     */
     fun getSensorRotationDegrees(relativeRotation: Int): Int {
         return camera.cameraInfo.getSensorRotationDegrees(relativeRotation)
     }
 
+    /**
+     * @see [androidx.camera.core.CameraInfo.getTorchState]
+     */
     fun getTorchState(): Flow<Int> {
         return camera.cameraInfo.torchState.toFlow()
     }
 
+    /**
+     * @see [androidx.camera.core.CameraInfo.getZoomState]
+     */
     fun getZoomState(): Flow<ZoomState> {
         return camera.cameraInfo.zoomState.toFlow()
     }
