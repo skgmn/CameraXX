@@ -37,7 +37,7 @@ android {
 
 dependencies {
     debugApi project(":library")
-    releaseApi "com.github.skgmn:cameraxx:$libraryVersion"
+    releaseApi "com.github.skgmn:cameraxx:$libraryCoreVersion"
 
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.3.1"
 }

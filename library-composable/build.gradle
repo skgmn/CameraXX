@@ -40,7 +40,7 @@ android {
 
 dependencies {
     debugApi project(":library")
-    releaseApi "com.github.skgmn:cameraxx:0.6.0"
+    releaseApi "com.github.skgmn:cameraxx:$libraryCoreVersion"
 
     implementation "androidx.compose.material:material:$composeVersion"
     implementation "androidx.compose.ui:ui:$composeVersion"

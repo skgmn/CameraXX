@@ -23,7 +23,7 @@ afterEvaluate {
 
                 groupId = 'com.github.skgmn'
                 artifactId = 'cameraxx'
-                version = libraryVersion
+                version = libraryCoreVersion
 
                 artifact(sourceJar)
 
