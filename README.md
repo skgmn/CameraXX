@@ -1,7 +1,5 @@
 # Setup
 
-GitHub Packages authorization is required to use this library. See [this](https://gist.github.com/skgmn/79da4a935e904078491e932bd5b327c7) to setup.
-
 ```gradle
 dependencies {
     implementation "com.github.skgmn:cameraxx:0.6.0"
@@ -10,7 +8,7 @@ dependencies {
 
 # Features
 
-### Extension methods providing coroutine and flow
+CameraXX provides extensions methods for CameraX to use functions with coroutines and flows.
 
 ```kotlin
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider
@@ -20,10 +18,5 @@ suspend fun ImageCapture.takePicture(ImageCapture.OutputFileOptions): ImageCaptu
 fun ImageAnalysis.analyze(): Flow<ImageProxy>
 ```
 
-### Composable
-
-See [this](https://github.com/skgmn/CameraXX/tree/develop/library-composable).
-
-### BindingAdapter
-
-See [this](https://github.com/skgmn/CameraXX/tree/develop/library-bindingadapter).
+* [Using with Jetpack Compose](https://github.com/skgmn/CameraXX/tree/develop/library-composable)
+* [Using with DataBinding](https://github.com/skgmn/CameraXX/tree/develop/library-bindingadapter)

@@ -40,31 +40,10 @@ android {
 
 dependencies {
     debugApi project(":library")
-    releaseApi "com.github.skgmn:cameraxx:$libraryVersion"
+    releaseApi "com.github.skgmn:cameraxx:$libraryCoreVersion"
 
     implementation "androidx.compose.material:material:$composeVersion"
     implementation "androidx.compose.ui:ui:$composeVersion"
 }
 
-afterEvaluate {
-    publishing {
-        repositories {
-            maven {
-                url "https://maven.pkg.github.com/$GITHUB_ID/CameraXX"
-                credentials {
-                    username GITHUB_ID
-                    password GITHUB_PACKAGES_TOKEN
-                }
-            }
-        }
-        publications {
-            release(MavenPublication) {
-                from components.release
-
-                groupId = 'com.github.skgmn'
-                artifactId = 'cameraxx-composable'
-                version = libraryVersion
-            }
-        }
-    }
-}
+apply from: "publish.gradle"
