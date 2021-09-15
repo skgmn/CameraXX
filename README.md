@@ -4,7 +4,7 @@ GitHub Packages authorization is required to use this library. See [this](https:
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx:0.5.0"
+    implementation "com.github.skgmn:cameraxx:0.6.0"
 }
 ```
 

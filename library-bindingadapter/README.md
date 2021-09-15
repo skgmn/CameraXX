@@ -2,7 +2,7 @@
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx-bindingadapter:0.5.0"
+    implementation "com.github.skgmn:cameraxx-bindingadapter:0.6.0"
 }
 ```
 
