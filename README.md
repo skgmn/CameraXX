@@ -18,5 +18,5 @@ suspend fun ImageCapture.takePicture(ImageCapture.OutputFileOptions): ImageCaptu
 fun ImageAnalysis.analyze(): Flow<ImageProxy>
 ```
 
-* [Using with Jetpack Compose](https://github.com/skgmn/CameraXX/tree/develop/library-composable)
-* [Using with DataBinding](https://github.com/skgmn/CameraXX/tree/develop/library-bindingadapter)
+* [Using with Jetpack Compose](https://github.com/skgmn/CameraXX/tree/master/library-composable)
+* [Using with DataBinding](https://github.com/skgmn/CameraXX/tree/master/library-bindingadapter)
