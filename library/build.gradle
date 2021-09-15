@@ -36,8 +36,8 @@ dependencies {
     implementation "androidx.camera:camera-camera2:1.0.1"
     api "androidx.camera:camera-lifecycle:1.0.1"
     api "androidx.camera:camera-view:1.0.0-alpha28"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.5.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-guava:$coroutinesVersion"
 }
 
 afterEvaluate {
