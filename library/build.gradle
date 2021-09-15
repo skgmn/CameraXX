@@ -40,25 +40,4 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-guava:$coroutinesVersion"
 }
 
-afterEvaluate {
-    publishing {
-        repositories {
-            maven {
-                url "https://maven.pkg.github.com/$GITHUB_ID/CameraXX"
-                credentials {
-                    username GITHUB_ID
-                    password GITHUB_PACKAGES_TOKEN
-                }
-            }
-        }
-        publications {
-            release(MavenPublication) {
-                from components.release
-
-                groupId = 'com.github.skgmn'
-                artifactId = 'cameraxx'
-                version = libraryVersion
-            }
-        }
-    }
-}
+apply from: "publish.gradle"

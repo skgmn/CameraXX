@@ -1,0 +1,58 @@
+apply plugin: "maven-publish"
+apply plugin: "signing"
+
+task sourceJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier "sources"
+}
+
+afterEvaluate {
+    publishing {
+        repositories {
+            maven {
+                url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+                credentials {
+                    username findProperty("OSSRH_ID") ?: ""
+                    password findProperty("OSSRH_PASSWORD") ?: ""
+                }
+            }
+        }
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                groupId = 'com.github.skgmn'
+                artifactId = 'cameraxx'
+                version = libraryVersion
+
+                artifact(sourceJar)
+
+                pom {
+                    name = "CameraXX"
+                    description = "Extensions for CameraX"
+                    url = "https://github.com/skgmn/CameraX"
+                    licenses {
+                        license {
+                            name = "MIT License"
+                            url = "http://opensource.org/licenses/MIT"
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = "skgmn"
+                            name = "skgmn"
+                        }
+                    }
+                    scm {
+                        connection = "scm:git@github.com:skgmn/CameraX.git"
+                        developerConnection = "scm:git@github.com:skgmn/CameraX.git"
+                        url = "https://github.com/skgmn/CameraX"
+                    }
+                }
+            }
+        }
+    }
+    signing {
+        sign publishing.publications.release
+    }
+}
