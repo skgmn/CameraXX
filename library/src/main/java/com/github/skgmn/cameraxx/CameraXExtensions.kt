@@ -90,18 +90,26 @@ fun ImageAnalysis.analyze(): Flow<ImageProxy> {
         val imageProxies = Collections.newSetFromMap(WeakHashMap<ImageProxy, Boolean>())
         setAnalyzer(MoreExecutors.directExecutor(), { imageProxy ->
             val imageProxyWrapper = ImageProxyWrapper.wrap(imageProxy)
-            imageProxies += imageProxyWrapper
+            synchronized(imageProxies) {
+                imageProxies += imageProxyWrapper
+            }
             ImageProxyWrapper.addOnCloseListener(imageProxyWrapper) {
-                imageProxies -= imageProxyWrapper
+                synchronized(imageProxies) {
+                    imageProxies -= imageProxyWrapper
+                }
             }
             if (!trySend(imageProxyWrapper).isSuccess) {
-                imageProxies -= imageProxyWrapper
+                synchronized(imageProxies) {
+                    imageProxies -= imageProxyWrapper
+                }
                 imageProxyWrapper.close()
             }
         })
         awaitClose {
-            imageProxies.forEach { it.close() }
-            imageProxies.clear()
+            val proxies = synchronized(imageProxies) {
+                imageProxies.toList().also { imageProxies.clear() }
+            }
+            proxies.forEach { it.close() }
             clearAnalyzer()
         }
     }
