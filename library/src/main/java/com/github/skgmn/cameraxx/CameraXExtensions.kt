@@ -9,6 +9,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.guava.await
@@ -29,8 +30,8 @@ suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
 /**
  * Listen to [PreviewView.StreamState] of this [PreviewView].
  */
-fun PreviewView.listenPreviewStreamState(): Flow<PreviewView.StreamState> {
-    return previewStreamState.toFlow()
+fun PreviewView.listenPreviewStreamState(): StateFlow<PreviewView.StreamState?> {
+    return previewStreamState.toStateFlow()
 }
 
 /**

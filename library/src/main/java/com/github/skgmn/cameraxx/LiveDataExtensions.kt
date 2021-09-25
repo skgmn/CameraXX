@@ -1,27 +1,30 @@
 package com.github.skgmn.cameraxx
 
 import androidx.lifecycle.LiveData
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import java.util.concurrent.atomic.AtomicInteger
 
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T> LiveData<T>.toFlow(): Flow<T> {
-    return callbackFlow {
-        value?.let {
-            trySend(it)
-            if (!isActive) {
-                return@callbackFlow
+internal fun <T : Any> LiveData<T>.toStateFlow(): StateFlow<T?> {
+    val stateFlow = MutableStateFlow(value)
+    val observer: (T) -> Unit = { stateFlow.value = it }
+    val refCount = AtomicInteger()
+    val flow = stateFlow
+        .onSubscription {
+            if (refCount.getAndIncrement() == 0) {
+                observeForever(observer)
             }
         }
-        val observer: (T) -> Unit = {
-            trySend(it)
+        .onCompletion {
+            if (refCount.decrementAndGet() == 0) {
+                removeObserver(observer)
+            }
         }
-        observeForever(observer)
-        awaitClose {
-            removeObserver(observer)
-        }
+        .flowOn(Dispatchers.Main.immediate)
+    return object : StateFlow<T?>, Flow<T?> by flow {
+        override val replayCache: List<T?>
+            get() = stateFlow.replayCache
+        override val value: T?
+            get() = stateFlow.value
     }
 }

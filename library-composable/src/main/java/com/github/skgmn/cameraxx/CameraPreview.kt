@@ -57,7 +57,7 @@ fun CameraPreview(
     val cameraState = remember { mutableStateOf<Camera?>(null) }
     val meteringPointFactoryState = remember { mutableStateOf<MeteringPointFactory?>(null) }
     val previewStreamStateFlowState =
-        remember { mutableStateOf<Flow<PreviewView.StreamState>?>(null) }
+        remember { mutableStateOf<StateFlow<PreviewView.StreamState?>?>(null) }
 
     run zoom@{
         Zoom(zoomState ?: return@zoom, cameraState)
@@ -111,6 +111,7 @@ private fun Zoom(
 
     val cameraZoomState by remember(cam) {
         cam.cameraInfo.getZoomState()
+            .filterNotNull()
             .distinctUntilChanged { old, new ->
                 old.minZoomRatio == new.minZoomRatio &&
                         old.maxZoomRatio == new.maxZoomRatio &&
@@ -239,7 +240,7 @@ private fun FocusMetering(
 @Composable
 private fun PreviewStream(
     previewStreamState: PreviewStreamState,
-    previewStreamStateFlowState: MutableState<Flow<PreviewView.StreamState>?>
+    previewStreamStateFlowState: MutableState<StateFlow<PreviewView.StreamState?>?>
 ) {
     val previewStreamStateFlow by previewStreamStateFlowState
     LaunchedEffect(previewStreamStateFlow) {
