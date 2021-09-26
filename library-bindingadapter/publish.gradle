@@ -23,7 +23,7 @@ afterEvaluate {
 
                 groupId = 'com.github.skgmn'
                 artifactId = 'cameraxx-bindingadapter'
-                version = libraryBindingAdapterVersion
+                version = ver.library
 
                 artifact(sourceJar)
 

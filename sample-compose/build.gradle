@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    compileSdk sdkVersion
+    compileSdk ver.sdk
 
     defaultConfig {
         applicationId "com.github.skgmn.cameraxx.samplecompose"
         minSdk 21
-        targetSdk sdkVersion
+        targetSdk ver.sdk
         versionCode 1
         versionName "1.0"
 
@@ -38,8 +38,8 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion composeVersion
-        kotlinCompilerVersion kotlinVersion
+        kotlinCompilerExtensionVersion ver.compose
+        kotlinCompilerVersion ver.kotlin
     }
     packagingOptions {
         resources {
@@ -54,10 +54,9 @@ dependencies {
     implementation 'androidx.activity:activity-compose:1.3.1'
     implementation "androidx.activity:activity-ktx:1.3.1"
     implementation "androidx.appcompat:appcompat:1.3.1"
-    implementation "androidx.compose.ui:ui:$composeVersion"
-    implementation "androidx.compose.material:material:$composeVersion"
-    implementation "androidx.compose.ui:ui-tooling-preview:$composeVersion"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-compose:1.0.0-alpha07"
-    implementation "com.github.skgmn:startactivityx:1.0.0"
+    implementation "androidx.compose.ui:ui:${ver.compose}"
+    implementation "androidx.compose.material:material:${ver.compose}"
+    implementation "androidx.compose.ui:ui-tooling-preview:${ver.compose}"
+    implementation "com.github.skgmn:startactivityx:1.2.0"
     implementation 'com.google.android.material:material:1.4.0'
 }
