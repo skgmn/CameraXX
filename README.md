@@ -2,7 +2,7 @@
 
 ```gradle
 dependencies {
-    implementation "com.github.skgmn:cameraxx:0.6.0"
+    implementation "com.github.skgmn:cameraxx:0.7.0"
 }
 ```
 
@@ -12,10 +12,12 @@ CameraXX provides extensions methods for CameraX to use functions with coroutine
 
 ```kotlin
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider
-fun PreviewView.listenPreviewStreamState(): Flow<PreviewView.StreamState>
 suspend fun ImageCapture.takePicture(): ImageProxy
 suspend fun ImageCapture.takePicture(ImageCapture.OutputFileOptions): ImageCapture.OutputFileResults
 fun ImageAnalysis.analyze(): Flow<ImageProxy>
+fun ImageProxy.toBitmap(): Bitmap
+fun ImageProxy.toByteArray(): ByteArray
+fun PreviewView.listenPreviewStreamState(): StateFlow<PreviewView.StreamState?>
 ```
 
 * [Using with Jetpack Compose](https://github.com/skgmn/CameraXX/tree/develop/library-composable)
