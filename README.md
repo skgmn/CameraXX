@@ -14,7 +14,7 @@ CameraXX provides extensions methods for CameraX to use functions with coroutine
 suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider
 suspend fun ImageCapture.takePicture(): ImageProxy
 suspend fun ImageCapture.takePicture(ImageCapture.OutputFileOptions): ImageCapture.OutputFileResults
-fun ImageAnalysis.analyze(): Flow<ImageProxy>
+fun <T> ImageAnalysis.analyze(suspend (ImageProxy) -> T): Flow<T>
 fun ImageProxy.toBitmap(): Bitmap
 fun ImageProxy.toByteArray(): ByteArray
 fun PreviewView.listenPreviewStreamState(): StateFlow<PreviewView.StreamState?>
