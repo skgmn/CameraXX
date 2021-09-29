@@ -98,12 +98,10 @@ private class ImageAnalysisDispatcher(
         for (imageProxy in channel) {
             val entries = synchronized(entries) { entries.toList() }
             val transformedList = imageProxy.use { proxy ->
-                supervisorScope {
-                    val deferredList = entries.map { entry ->
-                        async(entry.context) { entry.transform(proxy) }
-                    }
-                    deferredList.map { it.await() }
+                val deferredList = entries.map { entry ->
+                    async(entry.context) { entry.transform(proxy) }
                 }
+                deferredList.map { it.await() }
             }
             for (i in entries.indices) {
                 val transformed = transformedList[i]
