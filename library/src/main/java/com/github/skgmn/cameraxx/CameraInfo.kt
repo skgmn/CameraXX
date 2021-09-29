@@ -4,7 +4,8 @@ import androidx.camera.core.Camera
 import androidx.camera.core.ExperimentalExposureCompensation
 import androidx.camera.core.ExposureState
 import androidx.camera.core.ZoomState
-import kotlinx.coroutines.flow.Flow
+import com.github.skgmn.coroutineskit.lifecycle.toStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * A wrapper class of [androidx.camera.core.CameraInfo] to use methods as
@@ -40,15 +41,15 @@ class CameraInfo internal constructor(private val camera: Camera) {
     /**
      * @see [androidx.camera.core.CameraInfo.getTorchState]
      */
-    fun getTorchState(): Flow<Int> {
-        return camera.cameraInfo.torchState.toFlow()
+    fun getTorchState(): StateFlow<Int?> {
+        return camera.cameraInfo.torchState.toStateFlow()
     }
 
     /**
      * @see [androidx.camera.core.CameraInfo.getZoomState]
      */
-    fun getZoomState(): Flow<ZoomState> {
-        return camera.cameraInfo.zoomState.toFlow()
+    fun getZoomState(): StateFlow<ZoomState?> {
+        return camera.cameraInfo.zoomState.toStateFlow()
     }
 
     override fun equals(other: Any?): Boolean {

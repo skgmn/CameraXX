@@ -10,6 +10,7 @@ dependencyResolutionManagement {
                 password GITHUB_PACKAGES_TOKEN
             }
         }
+        mavenLocal()
     }
 }
 rootProject.name = "CameraXX"

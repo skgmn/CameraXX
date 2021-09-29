@@ -1,18 +1,16 @@
 package com.github.skgmn.cameraxx
 
 import android.content.Context
-import androidx.camera.core.*
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import com.github.skgmn.coroutineskit.lifecycle.toStateFlow
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.MoreExecutors
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.guava.await
-import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -29,8 +27,8 @@ suspend fun Context.getProcessCameraProvider(): ProcessCameraProvider {
 /**
  * Listen to [PreviewView.StreamState] of this [PreviewView].
  */
-fun PreviewView.listenPreviewStreamState(): Flow<PreviewView.StreamState> {
-    return previewStreamState.toFlow()
+fun PreviewView.listenPreviewStreamState(): StateFlow<PreviewView.StreamState?> {
+    return previewStreamState.toStateFlow()
 }
 
 /**
@@ -71,38 +69,5 @@ suspend fun ImageCapture.takePicture(
                     cont.resumeWithException(exception)
                 }
             })
-    }
-}
-
-/**
- * Analyze each camera frames.
- *
- * Note that the [Flow] returned here can be collected at most once simultaneously,
- * because [ImageAnalysis] supports only one callback.
- * Caller may use [shareIn] to receive [ImageProxy] at multiple collectors.
- *
- * It's also caller's reponsibility to close delivered [ImageProxy].
- * However, [ImageProxy] which are undelivered will be automatically closed.
- */
-@OptIn(ExperimentalCoroutinesApi::class)
-fun ImageAnalysis.analyze(): Flow<ImageProxy> {
-    return callbackFlow {
-        val imageProxies = Collections.newSetFromMap(WeakHashMap<ImageProxy, Boolean>())
-        setAnalyzer(MoreExecutors.directExecutor(), { imageProxy ->
-            val imageProxyWrapper = ImageProxyWrapper.wrap(imageProxy)
-            imageProxies += imageProxyWrapper
-            ImageProxyWrapper.addOnCloseListener(imageProxyWrapper) {
-                imageProxies -= imageProxyWrapper
-            }
-            if (!trySend(imageProxyWrapper).isSuccess) {
-                imageProxies -= imageProxyWrapper
-                imageProxyWrapper.close()
-            }
-        })
-        awaitClose {
-            imageProxies.forEach { it.close() }
-            imageProxies.clear()
-            clearAnalyzer()
-        }
     }
 }

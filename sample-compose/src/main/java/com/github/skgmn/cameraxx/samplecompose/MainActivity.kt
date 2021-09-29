@@ -39,51 +39,44 @@ class MainActivity : FragmentActivity() {
         }
 
         lifecycleScope.launch {
-            requestPermissions(Manifest.permission.CAMERA)
+            requestPermissions(PERMISSIONS)
             viewModel.permissionsInitiallyRequestedState.value = true
         }
     }
 
     private suspend fun takePhoto() {
-        val permissionRequest =
-            PermissionRequest(listOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), true)
-        val permissionResult = requestPermissions(permissionRequest)
-        if (permissionResult.granted) {
-            viewModel.savingPhotoState.value = true
-            try {
-                // ImageCapture seems not work well right after a permission is granted.
-                // In this case recreate and rebind ImageCapture to workaround this issue.
-                if (permissionResult == GrantResult.JUST_GRANTED) {
-                    viewModel.replaceImageCapture()
-                }
-                whenStarted {
-                    viewModel.takePhotoAsync().await()?.let { uri ->
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, uri)
-                            startActivityForResult(intent)
-                        } catch (e: ActivityNotFoundException) {
-                            Toast
-                                .makeText(
-                                    this@MainActivity,
-                                    R.string.photo_saved,
-                                    Toast.LENGTH_SHORT
-                                )
-                                .show()
-                        }
+        viewModel.savingPhotoState.value = true
+        try {
+            whenStarted {
+                viewModel.takePhotoAsync().await()?.let { uri ->
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        startActivityForResult(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        Toast
+                            .makeText(
+                                this@MainActivity,
+                                R.string.photo_saved,
+                                Toast.LENGTH_SHORT
+                            )
+                            .show()
                     }
                 }
-            } finally {
-                viewModel.savingPhotoState.value = false
             }
-        } else {
-            Toast.makeText(this@MainActivity, R.string.no_permissions, Toast.LENGTH_SHORT)
-                .show()
+        } finally {
+            viewModel.savingPhotoState.value = false
         }
     }
 
     private suspend fun requestCameraPermission() {
-        val permissionRequest =
-            PermissionRequest(listOf(Manifest.permission.CAMERA), true)
+        val permissionRequest = PermissionRequest(PERMISSIONS, true)
         requestPermissions(permissionRequest)
+    }
+
+    companion object {
+        private val PERMISSIONS = listOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
     }
 }
