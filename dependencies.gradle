@@ -1,0 +1,23 @@
+buildscript {
+    ext {
+        ver = [
+                sdk       : 30,
+                library   : "0.7.0",
+                kotlin    : "1.5.21",
+                compose   : "1.0.2",
+                coroutines: "1.5.2"
+        ]
+        dep = [
+                cameraXCore           : "androidx.camera:camera-core:1.0.1",
+                cameraXLifecycle      : "androidx.camera:camera-lifecycle:1.0.1",
+                cameraXView           : "androidx.camera:camera-view:1.0.0-alpha28",
+                camera2               : "androidx.camera:camera-camera2:1.0.1",
+                composeMaterial       : "androidx.compose.material:material:${ver.compose}",
+                composeUi             : "androidx.compose.ui:ui:${ver.compose}",
+                coroutinesKitLifecycle: "com.github.skgmn:coroutineskit-lifecycle:0.2.0",
+                coroutinesCore        : "org.jetbrains.kotlinx:kotlinx-coroutines-core:${ver.coroutines}",
+                coroutinesGuava       : "org.jetbrains.kotlinx:kotlinx-coroutines-guava:${ver.coroutines}",
+                lifecycleRuntime      : "androidx.lifecycle:lifecycle-runtime-ktx:2.3.1"
+        ]
+    }
+}

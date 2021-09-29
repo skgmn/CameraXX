@@ -36,7 +36,7 @@ fun MainScreen(
     val savingPhoto by viewModel.savingPhotoState.collectAsState()
 
     if (permissionStatus?.granted == true) {
-        CameraLayer(viewModel, savingPhoto, onTakePhoto)
+        CameraLayer(viewModel, onTakePhoto)
     }
     if (permissionInitiallyRequested && permissionStatus?.denied == true) {
         PermissionLayer(onRequestCameraPermission)
@@ -49,12 +49,8 @@ fun MainScreen(
 @Composable
 private fun CameraLayer(
     mainViewModel: MainViewModel,
-    savingPhoto: Boolean,
     onTakePhoto: () -> Unit
 ) {
-    val preview by remember { mutableStateOf(mainViewModel.preview) }
-    val imageCapture by mainViewModel.imageCaptureState.collectAsState()
-
     val zoomState = remember { ZoomState(pinchZoomEnabled = true) }
     val torchState = remember { TorchState() }
     val focusMeteringState = remember { FocusMeteringState() }
@@ -66,9 +62,7 @@ private fun CameraLayer(
     ) {
         CameraPreview(
             modifier = Modifier.fillMaxSize(),
-            // Pass null to Preview so it can keep last preview frame while saving a photo
-            preview = if (savingPhoto) null else preview,
-            imageCapture = imageCapture,
+            imageCapture = mainViewModel.imageCapture,
             zoomState = zoomState,
             torchState = torchState,
             focusMeteringState = focusMeteringState

@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    compileSdk sdkVersion
+    compileSdk ver.sdk
 
     defaultConfig {
         minSdk 21
-        targetSdk sdkVersion
+        targetSdk ver.sdk
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -32,14 +32,14 @@ android {
 }
 
 dependencies {
-    api "androidx.camera:camera-core:1.0.1"
-    api "androidx.camera:camera-lifecycle:1.0.1"
-    api "androidx.camera:camera-view:1.0.0-alpha28"
+    api dep.cameraXCore
+    api dep.cameraXLifecycle
+    api dep.cameraXView
 
-    implementation "androidx.camera:camera-camera2:1.0.1"
-    implementation "com.github.skgmn:coroutineskit-lifecycle:0.1.0"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-guava:$coroutinesVersion"
+    implementation dep.camera2
+    implementation dep.coroutinesKitLifecycle
+    implementation dep.coroutinesCore
+    implementation dep.coroutinesGuava
 }
 
 apply from: "publish.gradle"
