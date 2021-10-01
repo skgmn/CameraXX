@@ -1,11 +1,13 @@
 buildscript {
     ext {
         ver = [
-                sdk       : 30,
-                library   : "0.7.0",
-                kotlin    : "1.5.21",
-                compose   : "1.0.2",
-                coroutines: "1.5.2"
+                sdk                  : 30,
+                library              : "0.7.0",
+                libraryBindingAdapter: "0.7.0",
+                libraryComposable    : "0.7.1",
+                kotlin               : "1.5.21",
+                compose              : "1.0.2",
+                coroutines           : "1.5.2"
         ]
         dep = [
                 cameraXCore           : "androidx.camera:camera-core:1.0.1",
