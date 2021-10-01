@@ -1,5 +1,6 @@
 package com.github.skgmn.cameraxx
 
+import android.content.Context
 import androidx.camera.core.*
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -9,11 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
@@ -305,7 +308,8 @@ private fun AndroidPreviewView(
 ) {
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
-    val bindings = remember { PreviewViewBindings() }
+    val appContext = LocalContext.current.applicationContext
+    val bindings = remember { PreviewViewBindings(appContext) }
 
     AndroidView(
         modifier = modifier,
@@ -327,11 +331,7 @@ private fun AndroidPreviewView(
             if (bindings.lifecycleOwner !== lifecycleOwner ||
                 bindings.cameraSelector != cameraSelector
             ) {
-                oldUseCases = listOfNotNull(
-                    bindings.preview,
-                    bindings.imageCapture,
-                    bindings.imageAnalysis
-                )
+                oldUseCases = bindings.getUseCases()
                 newUseCases = listOfNotNull(preview, imageCapture, imageAnalysis)
             } else {
                 oldUseCases = listOfNotNull(
@@ -380,11 +380,35 @@ private fun AndroidPreviewView(
     )
 }
 
-private class PreviewViewBindings {
+private class PreviewViewBindings(
+    private val appContext: Context
+) : RememberObserver {
     var bindingJob: Job? = null
     var lifecycleOwner: LifecycleOwner? = null
     var cameraSelector: CameraSelector? = null
     var preview: Preview? = null
     var imageCapture: ImageCapture? = null
     var imageAnalysis: ImageAnalysis? = null
+
+    fun getUseCases(): List<UseCase> {
+        return listOfNotNull(preview, imageCapture, imageAnalysis)
+    }
+
+    override fun onAbandoned() {
+        onForgotten()
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun onForgotten() {
+        val useCases = getUseCases()
+        if (useCases.isNotEmpty()) {
+            GlobalScope.launch(Dispatchers.Main.immediate) {
+                val cameraProvider = appContext.getProcessCameraProvider()
+                cameraProvider.unbind(*useCases.toTypedArray())
+            }
+        }
+    }
+
+    override fun onRemembered() {
+    }
 }
