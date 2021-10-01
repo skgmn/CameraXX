@@ -23,7 +23,7 @@ afterEvaluate {
 
                 groupId = 'com.github.skgmn'
                 artifactId = 'cameraxx-composable'
-                version = ver.library
+                version = ver.libraryComposable
 
                 artifact(sourceJar)
 
